@@ -1,0 +1,1281 @@
+% Okay, so the first one turned into a horrible mess.  How do I want
+% to structure this one?
+
+% Should probably present the second-order-race business as a failed
+% experiment, rather than doing it in the main body of the text.
+
+% Consider not having an explicit related work section, and instead do
+% inline compare-and-contrast?
+
+% The big thing which worries me about all of this is that, while the
+% framework bits are all nice and generic, in practise you don't
+% actually gain that much from them, because hard problems remain too
+% hard.  Oh well.
+
+\documentclass[10pt,a4paper,twocolumn]{article}
+\usepackage{verbatim}
+\usepackage{color}
+
+\title{Speculative Lock Insertion}
+\author{Steven Smith}
+\begin{document}
+\newcommand{\editorial}[1]{\textcolor{red}{\footnote{\textcolor{red}{#1}}}}
+\newcommand{\needCite}{\editorial{need cite}}
+\maketitle
+
+\section{Missing bits}
+
+There are a couple of bits where I say ``try X, if that doesn't work,
+try Y''.  The order in which you try the various different options is
+kind of important; should be more explicit about that.
+
+\section{Introduction}
+
+There is a well-established trend in software engineering to make
+greater use of multiple threads, driven largely by the increasing
+availability of multi-processor systems and multi-core processors.
+While potentially paying large dividends in improved responsiveness,
+throughput, and power consumption, multi-threaded programming has an
+unfortunate tendency to lead to very subtle bugs.  Even worse, these
+bugs are often highly dependent on the low-level details of the
+hardware on which the software is being run, which can often lead to
+bugs which only reproduce on some small subset of computers.  This
+makes testing for these bugs extremely difficult, so they are more
+likely than other kinds of bugs to remain undetected in shipped
+software, and also complicates the process of developing a fix, so
+once detected they remain unfixed for much longer.
+
+In particular, desktop software is increasingly multithreaded, whereas
+previously only server commonly was.  Desktop applications have
+several characteristics which exacerbate the problem further:
+
+\begin{itemize}
+\item More important state is stored in volatile storage.  Server
+  software is often designed to behave reasonably when power is lost,
+  and this state recovery has the useful side effect of reducing the
+  amount of data lost following a crash; desktop software tends not to
+  have such protection, or at least not to the same degree, and so
+  the risk of important data being lost is greater.
+
+\item The workload is more heterogeneous.  The workload places on a
+  server system often consists of a large number of similar requests
+  carried out one after another, whereas desktop applications often
+  perform more complex actions but perform them less often, with
+  different users driving the application in different ways.  This means
+  that different users will see different bugs.
+  
+  Another way of saying this is that human beings are good sources of
+  randomness, and desktop applications are directly exposed to them,
+  whereas servers only communicate with them at one remove.
+
+\item The software lifecycle is shorter.  Desktop applications
+  generally have more aggressive development cycles than server ones,
+  which can restrict the amount of testing which is possible.
+
+\item Desktop application developers are often less experienced in
+  developing multi-threaded applications, or in some cases simply less
+  able, which increases the number of bugs which are introduced.  It
+  is unclear why this should be, but it does seem to be supported by
+  many people's experiences\editorial{Not sure about this.}.
+
+\item Desktop software is much less likely to come with any kind of
+  useful support contract, and so it is much more difficult for
+  end-users to contact the original developers in order to ask for a
+  fix.
+\end{itemize}
+
+A number of techniques have been proposed for reducing the likelihood
+of these multi-threading bugs, including transaction
+memory\cite{Shavit1997}, message passing systems\needCite{}, or
+automatic parallelization\cite{Bacon1994}.  While extremely useful,
+none of these have, thus far, seen widespread deployment.  The reasons
+for this are not always entirely clear, but include concerns such as
+performance, a constrained problem domain, or a lack of a widely
+available and widely trusted implementation.  It seems unlikely that
+this situation will change in the immediate future, and there is
+therefore a need for techniques which can ameliorate bugs found by
+end-users in programs developed with the currently widely-used shared
+memory model of concurrency.
+
+SLI, or Speculative Lock Insertion, is one potential approach to this
+problem.  It is able to fix some race-like bugs in x86 programs, given
+only the program binary and a reproduction of the bug, generating a
+modified binary whose behaviour is identical to that of the original
+except that it no longer suffers from the nominated bug.  The fixes so
+generated are safe, in the sense that any behaviour which is possible
+with the fix applied would also have been possible, if sometimes
+unlikely, without the fix.  Furthermore, the fixes will usually have
+very low performance overhead.
+
+In order to make this feasible, we must make some assumptions about
+the nature of the bug which is to be fixed:
+
+\begin{itemize}
+\item First, we assume that it is caused by some oddity of the
+  interleaving of memory accesses issued by different processors, so
+  that some valid interleavings will lead to the bug reproducing and
+  some will not.
+
+\item Second, we assume that the bug is one which can be detected
+  automatically.  Assertion failures and use-after-free bugs, for
+  instance, would satisfy this assumption, while incorrectly rendered
+  graphics would not.
+
+\item Third, we assume that the lag between the oddity of scheduling
+  and the detection of the crash is small, usually on the order of
+  microseconds to milliseconds.  This is necessary to keep the
+  analysis tractable.
+\end{itemize}
+
+These assumptions obviously constrain the situations in which these
+techniques are applicable, but we believe that they still encompass a
+reasonable selection of realistic bugs\editorial{Need the results of
+  the bug tracker review here, really}.
+
+Our approach has three basic phases:
+
+\begin{itemize}
+\item[1] Capture the bug which is to be fixed using some kind of
+  deterministic replay system.
+\item[2] Characterise which parts of the captured execution are
+  necessary to cause the bug to reproduce.
+\item[3] Create a fix which prevents the bug from reproducing.
+\end{itemize}
+
+The final stage of SLI is generating a fix.  This is, in our
+prototype, a binary patch to the original binary which inserts
+additional synchronisation which ensures that the bug cannot reproduce
+in future executions.  To the extent that the bug has been accurately
+characterised, this will fix it.  Obviously, if the characterisation
+is inaccurate or incomplete then the fix will be to, but we do
+guarantee that the fix will be safe (in a limited sense, defined
+below).
+
+\section{Definition of safety}
+
+The patches which we generate have one major safety constraint: they
+must not cause a correct program to become incorrect.  In the general
+case, without any program-specific knowledge, this is impossible
+(consider, for instance, a program which is intended to test some
+aspect of a computer's memory model, and which indicates its results
+by crashing in a particular way), and so the task is to find the
+minimal amount of program-specific information, and hence the
+strongest safety property, which allows useful fixes to be generated.
+
+It is useful to change viewpoint at this point: rather than modifying
+the program, we instead modify the semantics of the machine on which
+it executes.  This is helpful because the machine is often somewhat
+under-specified, and it is usually considered mad programming practise
+to rely upon the unspecified parts.  This means that, for a reasonable
+selection of definitions of correctness, changing unspecified aspects
+of a machine's semantics cannot cause correct programs to become
+incorrect.  Defining safety is then equivalent to delimiting the parts
+of the machine semantics are considered to be unspecified.  In the
+case of SLI, this is the time taken by individual instructions and the
+way in which memory accesses issued by different threads are
+interleaved.
+
+This also provides a useful way of categorising existing
+work:\editorial{This might belong in the related work section?}
+
+\begin{itemize}
+\item A number of other race-fixing systems, such as
+  Isolator\cite{Ramalingam2009}, ToleRace\cite{Kirovski2007},
+  Reenact\cite{Prvulovic2003a}, Atom-Aid\cite{Lucia2009}, and
+  Kivati\cite{Chew2010a}, use the same instruction interleaving based
+  definition as SLI.
+\item Most deadlock-immunity related systems, such as
+  Dimmunix\cite{Jula2008} or Gadara\cite{Wang2008}, change the time
+  taken by lock acquisition operations.
+\item Memory protection systems, such as DieHard\cite{Berger2006},
+  Exterminator\cite{Novark2007}, or AutoPaG\cite{Lin2007}, work by
+  redefining the effects of accesses to invalid memory.  Failure
+  obliviousness\cite{Rinard2004} has an essentially similar model, but
+  applied in a slightly more intelligent way.
+\item Systems which involve backtracking, such as
+  ASSURE\cite{Sidiroglou2009} or RX\cite{Qin2007}, can also be
+  modelled in a similar way, if the unspecified behaviour is allowed
+  to be non-causal.  These systems effectively look ahead at certain
+  points and select a behaviour will avoid certain types of bugs,
+  which is equivalent to saying that the instructions involved in
+  those bugs influence preceding instructions so as to prevent
+  themselves from ever occurring, so that the ``causes'' of program
+  behaviours can occur after the program behaviours
+  themselves.\editorial{Could also express this as angelic
+    non-determinism; not sure which would be more understood.}
+\item The semantics of the Reactive Immune System\cite{Sidiroglou2005}
+  are more surprising: functions occasionally return spontaneously.
+  Likewise, in ClearView\cite{Perkins} or datastructure
+  repair\cite{Elkarablieh2007}, data structures and parts of data
+  structures occasionally revert to previous states, or to states
+  which are consistent with a previous training run.
+\end{itemize}
+
+Obviously, some of these choices are more likely to introduce new bugs
+than others, and each suggests a different type of fix.
+
+XXX -- what I really want to do is discuss what it actually means to
+write a correct program in the presence of these automatic error
+fixing strategies, but that doesn't really fit here.
+
+\section{Capturing the bug}
+
+Before SLI proper starts, the bug to be fixed must be captured using a
+deterministic replay system (DRS).  This work does not attempt to
+advance the state of the art in DRSes, but does depend on them in
+order to be feasible, and so we discuss them briefly here.
+
+The only requirement we place on the choice of DRS is that it must
+capture an execution sufficiently precisely that the relevant fragment
+of execution can later be replayed as many times as necessary at the
+accuracy of individual memory accesses.  This captured execution does
+not need to be precisely the same as the original crashing execution,
+but the more different it is the more likely it is that SLI will fix
+the wrong bug.  The most obvious way of capturing an execution, used
+in our prototype, is to simply record every single memory access
+issued by the program, which is effective but has extremely high
+overhead.  This could be reduced by using a more intelligent recording
+mechanism such as PRES\cite{Park2009} or ODR\cite{Altekar2009}, both
+of which record only a few critical events and discover the rest only
+when they are needed during replay.  This approach can reduce overhead
+to a level where it is sensible to run with recording enabled by
+default.  An extreme form of this approach is provided by
+ESD\cite{Zamfir2010}, which logs nothing at all and instead attempts
+to recreate the path to failure given just the state of the program at
+the time of the failure.
+
+In a slightly different context, an automatic program exerciser such
+as CHESS\cite{Musuvathi2008} could be used to detect completely new
+bugs, which could then be passed to SLI to be automatically
+characterised and fixed.
+
+\section{The expression language, and deriving the initial crash predictor}
+
+Once the bug has been captured, we attempt to characterise and fix it.
+It would be straightforward to ensure that the \emph{exact} program
+execution does not re-occur, but doing so is unlikely to be helpful,
+simply because the space of program executions is sufficiently large
+that any given one would be unlikely to re-occur anyway\editorial{Need
+  to define what I mean by a program execution.  I mean starting from
+  a particular snapshot of memory and thread state, and then issuing
+  memory accesses in a particular order}.  It is instead necessary to
+generalise the execution, removing parts which are irrelevant to the
+bug.  This is necessarily a somewhat informal process, because we do
+not have a formal definition of the word ``bug'', and even the safest
+heuristics can be undone by sufficiently peculiar correctness
+specifications.  For instance, one might declare that the order of
+accesses to non-overlapping memory locations is irrelevant, as that
+cannot influence the program-visible state of the machine, but that
+would be incorrect if the program's specification itself referred to
+the order of those memory accesses (e.g. a driver performing
+memory-mapped IO).  The heuristics used in our system are described
+later, and generally tend to be rather
+conservative\footnote{``Conservative'' in this context meaning that
+  they do significantly constrain the set of possible specifications.
+  They are all safe in the sense that the actual observed execution is
+  always included in the generalised characterisation, although, as
+  mentioned previously, this is not a terribly useful guarantee.}.
+
+Our approach to this problem is to use the captured execution and the
+program binary to derive a crash predicting expression.  This is a
+function from program executions to booleans such that, if it
+evaluates to true, the program will crash in the same way as it did
+before.  We derive this using a restricted form of symbolic execution.
+
+First, an initial crash predictor is produced by symbolically
+executing the program, but without performing any state
+forking\footnote{The implementation of this is based on LibVEX, part
+  of Valgrind\cite{Nethercote2007}.}.  Instead, at every branch or
+scheduling decision, we substitute in the value which was observed in
+the captured execution and record the missed state fork.  Later stages
+of the analysis are then able to go back and perform whichever forks
+appear to be most relevant to the bug which is to be investigated.  In
+this way, we are able to use the captured execution to guide the
+analysis in a way which avoids the usual exponential blow up
+associated with symbolic execution of complicated programs.  In our
+case, we are only interested in parts of the system behaviour which
+are dependent on the interleaving of memory accesses, and so the only
+variables in the symbolic execution system are the values of memory
+loads which might plausibly have raced\footnote{Later stages can also
+  introduce explicit happens-before expressions, but they are not
+  present at this stage}; everything else is treated as a constant.
+This allows most thread-local computation to be constant-folded away
+to nothing and thus ignored, which significantly simplifies later
+analysis.
+
+Note that we use a broad definition of a data race, which includes,
+for instance, the implicit race on the lock structure when one thread
+releases a lock and another subsequently acquires it.  This means that
+we do not any explicit handling for synchronisation primitives, except
+to the extent that blocking and unblocking threads constrains the set
+of plausible schedules.
+
+\subsection{The expression language}
+
+The expressions themselves are generally straightforward, with a few
+exceptions\editorial{There's nothing particular clever here (in fact,
+  it's all pretty damn stupid), and it's taking up a lot of space.  Oh
+  well.}:
+
+\begin{description}
+\item[\_|\_] (pronounced bottom) expressions are used as placeholders
+  wherever the analysis cannot provide a more useful result, and could
+  stand for anything at all.  In practise, \verb^_|_^ expressions are
+  rare, essentially only appearing when something goes wrong, but they
+  make the semantics more straightforward.
+
+\item[onlyif] expressions, such as \verb|a onlyif b|, evaluate to
+  \verb|b| if \verb|a| is non-zero and \verb^_|_^ otherwise.  
+
+\item[load] expressions record expressions which were loaded from
+  memory.  They take this form:
+
+\begin{verbatim}
+load8@1:634;2:97 422aa70:(x+10) -> 0
+\end{verbatim}
+
+  which indicates that thread \verb|1| issued a load of size \verb|8|
+  at time \verb|1:634| from a constant memory address
+  \verb|0x422aa70|, and that the previous store to that location came
+  from thread \verb|2| at time \verb|2:97| to address \verb|(x+10)|,
+  and stored the constant \verb|0|.  Timestamps, in this particular
+  case, are just a pair of the thread ID and a counter of the number
+  of memory accesses issued by that thread since some arbitrary
+  starting point.  Note that both the load and store addresses can be
+  arbitrary expressions, as can the stored value, while the timestamps
+  are concrete values.
+
+  \verb|load| expressions are, in some sense, completely redundant,
+  because they evaluate to the value which was previously stored at
+  that location, but the extra information is useful when refining the
+  expression.
+
+\item[lastStore] expressions capture parts of the communication
+  patterns between threads.  An expression like:
+
+\begin{verbatim}
+lasStore@1:634:422a70 -> 2:97
+\end{verbatim}
+
+  evaluates to one if at time \verb|1:634| the previous store to
+  address \verb|422a70| was issued by thread \verb|2| at time
+  \verb|2:97|, and zero otherwise.
+
+\item[Happens-before] expressions, written \verb|A <-< B|, evaluate to
+  one if the event with timestamp \verb|A| happens before the event
+  with timestamp \verb|B| and zero otherwise.
+
+\item[RIP] expressions, named after the instruction pointer register
+  on the x86-64 architecture, constrain control flow, and also serve
+  to bring event timestamps into scope, as discussed above.
+
+  For instance, the expression:
+
+\begin{verbatim}
+rip 1:{(x == y)@56f5->56fc}:X
+\end{verbatim}
+
+  expresses the constraint that \verb|x| must be equal to \verb|y| in
+  order to bring accesses \verb|56f5| through to \verb|56fc| into
+  scope in thread \verb|1|, and then evaluates \verb|X|.  If the
+  control flow constraint is not met then the entire expression
+  evaluates to \verb^_|_^.
+
+  RIP expressions are also used to capture ``model'' executions so
+  that they can be further examined.  The model execution associated
+  with a particular RIP expression will be one which causes the
+  control flow expression, and any enclosing expression, to be
+  satisfied; beyond that, it is chosen largely arbitrarily.  The
+  initial model is the execution which was initially captured, while
+  the others are found by schedule exploration during the course of
+  the analysis.  These model executions can then be used as a kind of
+  partial oracle, providing plausible answers whenever fully general
+  analysis proves impossible.  This is unsound, as we have no
+  guarantee that the model execution is sufficiently representative,
+  but often allows the analysis to proceed in situations where it
+  would otherwise become stuck.
+
+\end{description}
+
+\subsection{Selecting a starting point for the replay}
+
+The initial crash predicting expression is derived by replaying a
+suffix of the log.  Selecting a correct starting place for this suffix
+is important: going back too far causes leads to a very complicated
+crash predicting expression, causing poor performance in the later
+stages of analysis, while not going back far enough risks missing
+information which is critical to producing a correct fix.  Our
+approach is to start with a very short suffix (currently roughly
+10ms), and then perform analysis on that.  If that produces a fix, we
+terminate.  Otherwise, we look backwards through the log until we find
+a store which would have been loaded by something in the crash
+predictor for the current starting point, and set the starting point
+to that store and retry.  If we ever find that we've had to backtrack
+more than ten seconds then we terminate and try again with an enlarged
+set of potentially-racing addresses.\editorial{This is currently done
+  manually, and the timeout is mostly just me guessing, because the logs
+  don't include it.}
+
+\subsection{Second-order races}
+
+This scheme relies on us being able to identify accesses which might
+plausibly race.
+
+\subsubsection{The old way}
+This is more difficult than simply identifying the accesses which
+\emph{did} race in some particular run, because it is possible that an
+access would have raced if some \emph{later} state fork had resolved
+in a different way.  To see this, consider the threads shown in figure
+\ref{fig:three_threads}, and suppose that address 2 initially contains
+something other than \verb|72|, and the initial schedule runs thread 1
+to completion, then thread 2, and then thread 3.  That initial
+schedule will show a race on address 2, but not on address 1.
+Na\"ively ignoring all non-racing accesses would therefore ignore the
+access to location 1 in thread 1, and so when the state fork for the
+test of \verb|y| in thread 2 was performed it would be unable to
+detect that a new race has been introduced.
+
+\begin{figure*}
+\begin{tabular}{lll}
+\verb|x := load from address 1| &
+\verb|y := load from address 2| &
+\verb|store 72 to address 2| \\
+&
+\verb|if (y == 72)| &
+\\
+&
+\verb|      store 7 to address 1| &
+\\
+\hline\\
+Thread 1 & Thread 2 & Thread 3
+\end{tabular}
+\caption{Three threads which race}
+\label{fig:three_threads}
+\end{figure*}
+
+We have two strategies for dealing with this problem:
+
+\begin{itemize}
+\item First, we try ignoring it completely, by simply assuming that
+  only addresses which raced during the observed execution will suffer
+  interesting races.  This is, as discussed above, unsound, but is
+  often sufficient, as most real bugs do not depend on this kind of
+  second-order race condition\editorial{In fact, none of the real bugs
+    I've tried this on depend on it}.
+
+\item Second, if an analysis using that heuristic fails or has to
+  backtrack too far, we investigate some other possible schedules, to
+  see if they exhibit any second-order effects.  We use three
+  different kinds of schedules:
+
+  \begin{itemize}
+  \item Most simply, we explore every schedule which can be obtained
+    from the original schedule by flipping a single existing race.
+  \item Next, we try snapshoting the process periodically (currently,
+    roughly every 100ms), and exploring every possible schedule
+    starting from each snapshot up to some timeout (currently five
+    minutes of compute time).
+  \item Finally, we run the process from the initial snapshot using a
+    randomly chosen snapshot (so at every race we decide independently
+    which thread will win).  This is repeated a small number of times
+    to achieve reasonable coverage\editorial{Not actually
+      implemented}.
+  \end{itemize}
+  
+  Exploring all of these alternative schedules is extremely expensive,
+  both due to the time taken to discover the alternative addresses and
+  the additional costs caused by having more racing addresses during
+  the other analysis phases.  It is also of dubious value, as most
+  bugs do not need it and the bugs which do are usually complicated
+  enough that some later phase of the pipeline fails.\editorial{Do I
+    need to mention this at all?}
+\end{itemize}
+
+\subsubsection{The new way}
+
+We maintain a set of addresses which might race.  This initially
+consists of just the address of the last race in the logfile.  If that
+fails, we then consider the set which contains just the second-to-last
+race, then the set which contains both the last and second-to-last
+races, then just the third-to-last race, and so on.\editorial{Need
+  more here.}
+
+\subsection{How to identify memory accesses}
+
+Our crash characterisations must often refer to events in more than
+one schedule.  For instance, we might discover that a program crashes
+if thread 1 access 5 happens before thread 2 access 2 or thread 1
+access 1 happens after thread 2 access 3.  It is clearly impossible
+for both of those happens-before relationships to occur at once, and
+so the expression must refer to multiple schedules.  There is
+therefore a need for some mechanism for naming memory access events
+which is valid across multiple schedules, possibly with different
+control flow histories.  This requires some notion of what it means
+for two accesses in different executions to be equivalent.  The
+appropriate choice will depend on the type of analysis to be
+performed.  We use different approaches at different stages of the
+analysis.
+
+In the initial bug characterisation stage, we use a very conservative
+definition of equivalence, equating two accesses iff:
+
+\begin{itemize}
+\item[a] They are issued by the same thread, and
+\item[b] The issuing threads have issued the same number of preceding
+  memory accesses, and
+\item[c] The issuing threads followed an identical control flow path
+  prior to issuing the access.
+\end{itemize}
+
+Accesses which are issued by different threads are always
+non-equivalent, as are accesses by a single thread where the control
+flow matches but the access numbers do not.  Otherwise, the accesses
+are simply incomparable.  In this scheme, memory accesses can be
+identified by a pair of thread ID and access number, provided that
+steps are taken to ensure that access identifiers are never compared
+across incompatible control flow histories.  In our system, we do this
+using explicit control flow expressions which specify that a
+sub-expression is to be interpreted with respect to a specific control
+flow history, and hence effectively bring certain memory accesses into
+scope, acting as a kind of binder.
+
+During fix generation, we use a much less cautious definition, and
+ignore the constraint that the issuing threads must have followed the
+same control flow path, largely in order to simplify the
+implementation.  This is in principle unsafe, as it means that
+unrelated accesses might be conflated, but in practise does not seem
+to cause any issues, because the initial analysis is usually
+sufficient to constrain execution to a very small number of possible
+control flows, so that the likelihood of a collision is acceptably
+low.
+
+It is also sometimes useful to be able to compare timestamps between
+more different executions, allowing for some changes in the control
+flow path.  In that case, we identify memory accesses by a four-tuple
+containing the following items:
+
+\begin{itemize}
+\item The thread identifier.
+\item The instruction pointer.
+\item The number of times which that instruction has been executed by
+  that thread.
+\item The number of memory accesses issued by that dynamic instruction
+  prior to the current one.
+\end{itemize}
+
+These timestamps still only define a particular event with respect to
+some control flow history, but are far more likely to produce some
+meaningful result when compared across different histories.  This
+makes them useful during the initial interesting address discovery
+phase, where the aim is to explore as many plausible schedules as
+possible, even if that comes at the expense of some slight
+inaccuracies.\editorial{Why not use this definition all the time?  The
+  real answer is that I didn't think of it early enough, but there's
+  also a high-horse one that it's formally equivalent to the other
+  one, but more computationally expensive to work with (mostly
+  maintaining per-RIP execution counters).  It's also much harder to
+  sanity check that all timestamps are properly defined by RIP
+  expressions with this representation.}.
+
+This definition is still rather arbitrary, and there are many others
+which would be equally valid and perhaps more useful.  For instance,
+one could use the call stack augmented with the number of instructions
+executed thus far in each frame, and thus eliminate the effects of
+subroutines which have previously been called and have now returned,
+or use per-address counters rather than per-instruction ones and hence
+produce a more data-structure-oriented identifier.  We have not needed
+to use these more complex approaches so far.
+
+\section{Exploring the set of possible expressions}
+
+For any given crash, there will usually be several possible
+explanations of why it crashed, each capturing a different aspect of
+the program's behaviour.  Some of these will be strictly equivalent
+(e.g. \verb|x == y| versus \verb|y == x|), but, more usefully, some
+will incorporate more or less of the observed schedule.  They will
+therefore prohibit a greater or larger set of possible schedules,
+which means that some will be easier to convert into a fix than
+others.  It is therefore useful to be able to explore the various
+possible expressions.  We do this using a set of linear rewrite
+rules:
+
+\begin{itemize}
+\item Constant folding is applied eagerly wherever possible, along
+  with some simple arithmetic simplifications.
+
+\item \verb|BadPointer| expressions, which specify that some
+  particular address is invalid, are rewritten to simply require that
+  the embedded symbolic expression is equal to the embedded concrete
+  address.  This amounts to assuming that the program's address space
+  layout will be the same on every future run.  Ignoring
+  ASLR\cite{Shacham2004}, this is a good approximation.  Even if ASLR
+  is present, certain critical addresses (such as \verb|NULL| or the
+  program's data segment) are likely to be unchanged, so this is
+  sometimes still true then.
+
+\item Expressions of the form \verb|load a:X;b:Y aAddr:bAddr -> val|,
+  which indicates that thread \verb|a| loaded \verb|val| from symbolic
+  address \verb|aAddr| at time \verb|a:X|, which was satisfied by a
+  store issued by thread \verb|b| at time \verb|b:Y| using symbolic
+  address \verb|bAddr|, are replaced with an expression:
+
+\begin{verbatim}
+(aAddr == bAddr &&
+   (lastStore a:X b:Y aAddr))
+ onlyif val
+\end{verbatim}
+
+  This amounts to saying that we only really know the value of the
+  expression if the program follows the same communication graph as it
+  did in the captured execution (the \verb|lastStore| expression) and
+  address of the load happens to match the address of the store.
+  Otherwise, nothing can be said about the value which is loaded.
+
+\item Expressions of the form \verb|lastStore a:X b:Y addr|, which
+  evaluate to true if the last store to \verb|addr| prior to
+  \verb|a:X| was issued at \verb|b:Y|, are somewhat more complicated.
+  They embed three main assertions:
+
+  \begin{itemize}
+  \item First, both \verb|a:X| and \verb|b:Y| must have actually
+    happened.  This should already have been covered by enclosing
+    \verb|rip| expressions, and so can just be assumed.
+  \item Second, \verb|b:Y| must happen before \verb|a:X|.  This is
+    encoded as a simple happens-before constraint \verb|b:Y <-< a:X|.
+  \item Third, no other stores must intervene.  This is the most
+    difficult part to check, as the other stores might not have
+    happened in our model execution.  We search for these other stores
+    in three places:
+
+    \begin{itemize}
+    \item First, we check for writes to the address from threads other
+      than \verb|b| which happened prior to \verb|b:Y| in this
+      execution but which were not ordered with respect to it.
+    \item Next, we take a snapshot of the program at time \verb|a:X|,
+      and then run every thread except \verb|a| forwards from there
+      for a few thousand instructions\footnote{Currently 10000 memory
+        accesses}, and see if they produce any racing accesses.
+    \item Finally, and only if we suspect second-order races might be
+      relevant, we return to the snapshot taken at \verb|a:X| and then
+      perform an exhaustive enumeration of every possible schedule
+      from that point forwards, up to some depth\editorial{What
+        depth?}.
+    \end{itemize}
+
+    It is also necessary to check whether two stores are to the same
+    address, or might have been to the same address.  This is
+    essentially the aliasing problem familiar from optimising
+    compilers, but applied to binaries rather than to source code.  We
+    cheat and simply assume that the aliasing pattern which we
+    observed in the sample execution will apply to every subsequent
+    execution.  Previous iterations of this work tried much harder to
+    discover whether accesses ``might have'' aliased in some other
+    schedule, but we have found that this is both computationally
+    extremely expensive and largely unnecessary.
+  \end{itemize}
+\end{itemize}
+
+This should arguably be a proper search process, with backtracking,
+rather than just a linear sequence of expressions produced by
+rewriting, but that has not been necessary so far.
+
+\section{Deriving a fix}
+
+The refinement process produces a series of expressions which capture
+different aspects of the program's execution, and hence different
+causes of the crash, such that forcing any of these expressions to be
+false will cause the crash to not happen.  The task is therefore to
+find some change which can be made to the program which will cause the
+expression to become false.
+
+In our case, we are only interested in bugs which can be fixed by
+introducing a new global mutex which is acquired in two critical
+sections.  Ignoring control flow dependencies and unrolling the entire
+program into simple straight-line code, a mutex which is acquired
+between \verb|A| and \verb|B| and between \verb|C| and \verb|D| can be
+encoded into a constraint on schedules that \verb^B <-< C || D <-< A^.
+Our basic plan is then to find two ranges of dynamic execution of the
+program which lead to a contradiction when encoded in this form and
+combined with the crash predicting expression, map these dynamic
+ranges back into static points in the program, and then attempt to
+patch in suitable synchronisation at these points.
+
+We perform a couple of simplifications to the crash predicting
+expressions before beginning to look for fixes:
+
+\begin{itemize}
+\item \verb|load| expressions are replaced with the expression loaded,
+  and \verb|lastStore x -> y| expressions are replaced with simple
+  \verb|x <-< y| expressions.  This effectively assumes that all of
+  the relevant scheduling constraints have already been captured in
+  explicit happens-before relations.
+
+\item \verb|rip X:{Y@...}:Z| expressions are replaced with
+  \verb|Y onlyif Z| ones and timestamps are re-written to use the
+  four-tuple form, discussed above\editorial{Timestamps \emph{should}
+    be rewritten; at the moment they're not}.  This amounts to
+  assuming that all relevant control flow histories are ``similar'',
+  in some ill-defined sense, and so the risk of conflating unrelated
+  accesses is sufficiently small even without the protection of
+  explicit rip expressions.
+
+\item \verb|Y onlyif Z| expressions are then converted to
+  \verb|if Y then Z else ¬Z| expressions, effectively assuming that if
+  we don't know a particular thing to be true then it must be false.
+\end{itemize}
+
+The result is that the expression contains only boolean operators,
+bottom expressions, and happens-before relationships.  Given this
+simplified expression, we extract every mentioned event and then
+enumerate every possible critical section using those events as
+boundaries (there are usually no more than a couple of dozen such
+events, and so this is computationally manageable) and check each one.
+
+Once we have a critical section, we apply two more simplification
+passes before invoking the theorem prover.  We know that the original
+crash predictor must be satisfiable, and so any unsatisfiability must
+be in some sense related to the new critical section.  This means that
+references which are unrelated to those mentioned in the critical
+section are unlikely to be useful.  We take advantage of this
+observation by removing them from the expression and replacing them
+with bottom expressions.  An uninteresting reference is defined to be
+one which isn't mentioned in the critical section and which doesn't
+appear on the other side of any happens-before relation to a reference
+which is mentioned in the critical section.  This is in some sense
+unsafe\editorial{Do I mean unsafe, unsound, or incomplete? This whole
+  paragraph needs rewriting, anyway.}, as it is possible that a
+critical section might be sufficient due to chains of existing
+synchronisation, and removing the intermediate references would mean
+that we cannot detect this.  The net effect of this is that we are
+unable to take advantage of some of the synchronisation which is
+already present in the program, which can cause us to produce an
+inefficient fix, or in some cases to fail to produce any fix at all.
+It is possible that a more intelligent theorem prover would eliminate
+the need for this simplification.
+
+Finally, we eliminate all of the bottom expressions by means of the
+following algorithm:
+
+\begin{itemize}
+\item We start in a positive context.
+\item \verb^¬_|_^ is replaced by \verb^_|_^.  Otherwise, we flip the
+  sense of the context and simplify \verb|x|.
+\item In a positive context, \verb^x && _|_^ is replaced by \verb|x|,
+  and in a negative context by \verb^_|_^.
+\item In a positive context, \verb^x || _|_^ is replaced by
+  \verb^_|_^, and in a negative context by \verb^x^.
+\end{itemize}
+
+If the end result is \verb^_|_^ then the expression is definitely not
+a contradiction, and otherwise we need a full theorem prover.
+
+This is supposed to be equivalent to replacing each bottom expression
+with a new fresh boolean variable and then assign each variable
+whichever value is least likely to be helpful to us in establishing a
+contradiction.
+
+The resulting expression is then, finally, passed to a very simple
+custom theorem prover which attempts to find a contradiction.  The
+details of this are completely standard and are not discussed further
+here\editorial{Not sure if I can get away with that; there are
+  definitely multiple standard ways of doing this, and I'm not
+  convinced that my standard would be anyone else's
+  standard.}\editorial{Why not use an off-the-shelf theorem prover?
+  The first couple I happened to look at either didn't support
+  transitive non-total relations, which is kind of important here, or
+  required a lot of set-up, so I figured this would be easier.}.
+  
+
+There are usually several possible potential fixes for any given crash
+expression, corresponding to different places in which the locks could
+be inserted and hence different sets of executions which will be ruled
+out.  All of these sections are ``correct'', within our limited
+definition of the word, as they will prevent the bug from reproducing
+in exactly the same way, but some will be more correct than others,
+providing collateral fixes for a greater or smaller set of other ways
+of reproducing it, or for different but closely-related bugs.
+
+For instance, consider a piece of code like this:
+
+\begin{verbatim}
+1: if (global_ptr != NULL) {
+2:     if (global_ptr == NULL)
+3:         print_a_warning();
+4:     x = global_ptr->x;
+5: }
+\end{verbatim}
+
+where some other thread sets \verb|global_ptr| to \verb|NULL| without
+any synchronisation\footnote{This example is taken from Thunderbird;
+  the apparently-redundant inner test was produced from a function
+  which was inlined by the compiler.  The example is shown in a C-like
+  language for clarity; the actual analysis was, as usual, performed
+  on raw machine code.}.  If our sample execution shows the
+asynchronous assignment to \verb|global_ptr| occurs between the two
+tests, then we will produce two critical section pairs: line 1 to line
+2, and line 1 to line 4.  Both of these will be sufficient to change
+the observed behaviour, but only the second, larger, one will actually
+fix the bug, illustrating that selecting the smallest possible fix is
+not always desirable.  There will also be, in some cases, a third
+possible critical section, stretching from the initialisation of
+\verb|global_ptr|, which may have occurred much earlier in the
+program, to line 1.  This will also prevent the bug, as it will ensure
+that the test on line 1 always sees \verb|global_ptr| to be
+\verb|NULL|, so the bad code will never run, but if the initialisation
+happened much earlier then it will be at high risk of introducing a
+deadlock or poor performance (and will also be difficult to turn into
+a patch).  This suggests that simply taking the largest critical
+section is also unlikely to be a good strategy.
+
+We use a simple heuristic to solve this problem: we select the largest
+critical section set which is a superset of the smallest set and which
+is less than a factor of ten larger than the smallest one (where size
+is defined to be the total number of dynamic instructions across all
+of the critical sections in the set).  The expectation here is that
+the smallest set will fix the most proximal cause of the crash, and
+hence is highly likely to be relevant, and capturing small supersets
+of that will fix the most closely related bugs.  Limiting the total
+size of the set helps to prevent the system from selecting
+overly-broad fixes which would harm concurrency or introduce highly
+likely deadlocks.  The number ten is somewhat arbitrary, but appears
+to work in our (admittedly somewhat limited) evaluation.
+
+\subsection{Implementation details of the binary patcher}
+
+Once an appropriate dynamic critical section has been discovered, it
+must be converted to a static one.  Mapping the dynamic points into
+particular instructions is generally straightforward, but mapping
+ranges can be more difficult if they cross control flow branches.
+
+We simplify the problem by detecting if the start and end of a
+critical section are in different functions (as delimited by
+\verb|call| and \verb|ret| instructions) and, if they are,
+backtracking up the call stack to their most recent common stack
+frame.  Besides simplifying the binary patching problem, this has the
+(sometimes) useful side-effect of expanding the critical section, and
+generally moving it to boundaries which are more likely to correspond
+to the original programmers' ideas about where critical section
+boundaries ``should be''\editorial{Rephrase}.\editorial{\emph{Should}
+  do this; currently rely on doing it by hand.}
+
+Once we have obtained start and end points in the same function frame,
+we examine the program's machine code starting from the start point,
+exploring its control flow graph until we encounter the end point or
+an indirect branch (the exploration process is sufficiently naive that
+indirect branches cannot be sensibly predicted, and so exploration has
+to stop at that point).  The CFG thus obtained is then trimmed to only
+contain paths starting at the start node and ending at the end node.
+The desired synchronisation can then be added to this CFG in a
+straightforward way (being careful to always release any needed locks
+when leaving the patch), and the result recompiled into a fragment of
+position-independent machine code.  This is combined with a stub
+loader and built into an ELF shared library, which can be loaded into
+the target program using \verb|LD_PRELOAD| (or an equivalent runtime
+mechanism using).  The stub loader is then responsible for actually
+applying the patch to the program.  We use two main strategies for
+doing so:
+
+\begin{itemize}
+\item The entrypoint instruction can be replaced with a direct jump to
+  the patch fragment.  This is the most efficient way of gaining
+  control, but is only safe if the entrypoint instruction is large
+  enough to contain the jump instruction.  Otherwise, we would also
+  have to change the next instruction, which is dangerous without
+  performing sufficient static analysis to be confident that there are
+  no undiscovered jumps to it.  Doing that kind of static analysis on
+  arbitrary binary programs is challenging and we do not attempt it.
+
+\item The debug registers\needCite{} can be used to insert a
+  breakpoint at the entrypoint address, and we can then gain control
+  from the resulting signal handler and transfer control to the patch
+  from there.  This is simple, and always safe, but the debug
+  registers can only encode four breakpoints at a time on most
+  x86-type processors, which limits the number of patches which can be
+  applied in this way.  It is also slower than a direct branch.
+
+\item The entrypoint instruction can be replaced with a breakpoint
+  instruction.  As the x86 breakpoint instruction is a single byte, it
+  will always fit, and so this is always safe, and the number of
+  breakpoint instructions is unlimited, and so this is always
+  available.  Unfortunately, it is just as slow as the debug
+  registers.
+\end{itemize}
+
+In practise, the second approach seems to be most useful, as most
+instructions are not large enough to encode an arbitrary branch, and
+few patches require more than four critical sections.
+
+\subsection{Deadlocks}
+
+There is a risk that introducing additional synchronisation into the
+program will itself introduce a deadlock.  This is acceptable
+according to the safety property given above, but is obviously
+extremely undesirable in a real system.  We mitigate the issue
+slightly by using a timeout on our introduced locks, so that deadlocks
+at least resolve themselves in bounded time, but this can lead to
+extremely poor performance or incomplete fixing of bugs.  This could
+be avoided in some cases by performing static analysis to select
+critical sections which are less likely to lead to deadlocks, at the
+expense of potentially not being able to find any safe fix at all.
+
+One possible approach would be to integrate with a deadlock immunity
+system such as Dimmunix\cite{Jula2008}, detecting and fixing deadlocks
+as they happen.  The system would then hopefully eventually converge
+on a state which is both deadlock and race free.  It should also be
+possible in many cases to simulate the effect which SLI lock insertion
+would have on Dimmunix, and hence to determine that Dimmunix
+ultimately would insert a healing lock before it needs to do so, which
+would eliminate the need to reproduce the deadlock before fixing it.
+Of course, the Dimmunix lock order graph is itself only an
+approximation, and so this would not be guaranteed to be effective in
+every case, but it seems likely that it would be sufficient in most
+situations.
+
+We have not implemented this in our current prototype.
+
+\section{Example of the whole pipeline, applied to a simple bug}
+
+Suppose we have a program like this (presented in C-like source code,
+for clarity; the actual implementation works at the machine code
+level):
+
+\begin{verbatim}
+int x;
+thread1() {
+    1: x = 5;
+}
+thread2() {
+    2: local1 = x;
+    3: local2 = x;
+       assert(local1 == local2);
+}
+\end{verbatim}
+
+Assume that the initial value of x is 7, and that we have a
+reproduction in which 1 happens between 2 and 3, and that \verb|x| has
+been selected as the only probably-relevant racing address.  Assuming
+reasonable compiler behaviour, the initial symbolic execution pass
+will produce an initial crash reason like this\footnote{This
+  particular example was produced from a program compiled with gcc
+  4.2}:
+
+\begin{verbatim}
+(rip 2:{(((load4@2:11;initial_state x:x -> 7) -
+        (load4@2:13;1:21 x:x -> 5)) & ffffffff)
+          != 0}:1)
+\end{verbatim}
+
+The main components of this expression are:
+
+\begin{itemize}
+\item The initial \verb|(rip 2:| indicates that we are concerned with
+  thread 2.
+\item The next component, in \verb|{}| brackets, gives a condition
+  necessary for thread 2 to follow the fatal control-flow path.  Note
+  that the condition is not exactly the same as that which was present
+  in the original source; this is because we operate on the binary,
+  and so see the effects of compiler instruction selection and
+  optimisation.
+\item The final component, \verb|:1|, gives the condition necessary
+  for the thread to crash given that it followed the bad path.  In
+  this case, once the assertion has failed, the thread is doomed, and
+  so this condition is just the constant \verb|1|.
+\end{itemize}
+
+Once the crash condition has been obtained, we begin exploring
+alternatives, incorporating pieces of the captured execution and
+looking for variants which can be converted into a fix.  Using some
+simple heuristics, we select the second load as being most likely to
+be relevant, and so refine the expression to this:
+
+\begin{verbatim}
+(rip 2:{(lastStore@2:13:x -> 1:21) onlyif
+  (((-5 +
+     (load4@2:11;initial_state x:x -> 7)) &
+    ffffffff) != 0)}:1)
+\end{verbatim}
+
+Which indicates that we only really know what happens if the load at
+\verb|2:13| (statement 3) reads a value written by the store at
+\verb|1:21| (statement 1), and in that case we crash if \verb|-5| plus
+the load at \verb|2:11| (statement 2) is not equal to zero.  We then
+use schedule exploration to find other stores which could have
+satisfied the load at \verb|2:13|.  In this particular case, there
+won't be any, and so the \verb|lastStore| expression is refined to a
+simple happens-before expression \verb|1:21 <-< 2:13|:
+
+\begin{verbatim}
+(rip 2:{(1:21 <-< 2:13) onlyif
+  (((-5 +
+     (load4@2:11;initial_state x:x -> 7)) &
+  ffffffff) != 0)}:1)
+\end{verbatim}
+
+The next step is to refine the remaining \verb|load| to a
+\verb|lastStore| and an \verb|onlyif|:
+
+\begin{verbatim}
+(rip 2:{(1:21 <-< 2:13) onlyif
+   ((lastStore@2:11:x -> initial_state)
+   onlyif 1)}:1)
+\end{verbatim}
+
+This time, the condition itself becomes
+\verb|(-5 + 7) & ffffffff != 0|, which can be constant-folded away to
+\verb|1|; in this way, details of the program's execution beyond the
+simple communication graph can be incorporated into the analysis
+process.  We now refine the \verb|lastStore| expression, to try to
+find what other stores could have supplied the result of the load at
+\verb|2:11|.  This time, we will discover that it could also have been
+satisfied by the store at \verb|1:21|, in addition to the initial
+state, and so the expression will refine to:
+
+\begin{verbatim}
+(rip 2:{(1:21 <-< 2:13) onlyif
+      (¬(1:21 <-< 2:11) onlyif 1)}:1)
+\end{verbatim}
+
+At this point, none of the exploration rewrite rules applies, and so
+we are forced to pass this expression to fix generation.  This
+simplifies to
+
+\begin{verbatim}
+(1:21 <-< 2:13 && 2:11 <-< 1:21)
+\end{verbatim}
+
+using the rules described above, and so the available timestamps are
+\verb|2:11|, \verb|2:13|, and \verb|1:21|.  Suppose that we select
+\verb|2:11| to \verb|2:13| as one critical section and \verb|1:21| to
+\verb|1:21| as the other\footnote{In fact, our implementation will
+  first try 2:13 to 2:13 against 1:21 to 1:21, but that will be almost
+  immediately discovered to be ineffective and dismissed.}.  This
+encodes to the expression \verb^2:13 <-< 1:21 || 1:21 <-< 2:11^, and
+so the expression passed to the theorem prover is
+
+\begin{verbatim}
+(2:13 <-< 1:21 || 1:21 <-< 2:11) &&
+1:21 <-< 2:13 &&
+2:11 <-< 1:21
+\end{verbatim}
+
+This forms a trivial contradiction, and so the critical section is
+sufficient to cause the program to behave differently in future
+executions, and hence to avoid future reproductions of the same bug.
+
+We must now instantiate these critical sections in a binary patch.  In
+this case, that is very straightforward, because they cover only
+straight-line code, and so we just duplicate the few necessary
+instructions with the additional synchronisation.  Depending on the
+details of how the compiler translated the source into machine code,
+we might then gain control using either a jump instruction or the
+debug registers\editorial{Always the debug registers, because the jump
+  instruction bit isn't implemented.}.  This patch will, in this case,
+completely fix the bug.
+
+\section{Results when applied to some actual bugs}
+
+XXX
+
+Bugs to look at:
+
+\begin{itemize}
+\item At least a couple of artificial ones.
+\item The glibc one.
+\item The glib one.
+\item The thunderbird one.
+\end{itemize}
+
+Things to include for each one:
+
+\begin{itemize}
+\item What it was
+\item How many critical sections we eventually came up with, how many
+  would work, whether we introduce a deadlock.
+\item How long the analysis takes, and how much memory it needs.
+\item Whether the binary patcher worked.
+\item How much overhead the binary patch introduced (how to measure this?)
+\item Whether the implemented binary patch actually fixed the bug.
+\end{itemize}
+
+Tricky part: all of my data for glibc, glib, and artificial bugs is
+from a slightly older version of the algorithm, so I'll have to re-run
+a lot of tests.  There are also a few manual (but mechanical) steps in
+the pipeline, which makes timing information much harder to get.
+
+\section{Related work}\editorial{This is a bit of a bestiary.  Could do with a bit more analysis.}
+
+There have been a number of previous systems which tackle similar
+problems.  Most recently, Kivati\cite{Chew2010a} attempts to fix
+single-variable atomicity violations automatically by combining a
+static analysis pass with some runtime support.  The result is able to
+prevent many common kinds of race-like bugs with low overhead.  There
+are a couple of important differences between their approach and ours:
+
+\begin{itemize}
+\item SLI is only activated once a bug has been observed, whereas
+  Kivati runs at all times.  This means that it is more likely to
+  ``fix'' perfectly benign races.  It also means that the fixes cannot
+  easily be applied without also requiring the Kivati runtime,
+  whereas, once generated, SLI fixes can stand alone without any of
+  the rest of the SLI infrastructure, which may sometimes improve
+  performance.
+
+\item Kivati requires access to the program's source code during the
+  initial static analysis phase, whereas SLI only requires the binary.
+
+\item In theory, SLI can be applied to a wider class of bugs than
+  Kivati, although in practise the complexity of the analysis and the
+  difficulty of generating a fix for more complicated bugs means that
+  this is not a particularly useful ability.
+\end{itemize}
+
+Another approach, taken by systems such as
+Isolator\cite{Ramalingam2009} and ToleRace\cite{Kirovski2007},
+restricts the problem domain to asymmetric races, where one thread is
+correctly following a locking discipline while some other thread is
+not, and seeks to ensure that the correct thread continues to be
+correct despite the misbehaviour of the incorrect one.  This might,
+for instance, be useful if the correct thread is controlled by an
+application while the incorrect one is controlled by a library which
+the application writer is unable to modify.  As with Kivati, they do
+not target specific bugs.
+
+Atom-Aid\cite{Lucia2009} is another approach to race bug
+mitigation, in this case using hardware transactional memory support.
+Their approach is to bundle sequences of memory accesses into
+transactions according to some heuristics, effectively reducing the
+number of permissible schedules and hence the scope for memory
+ordering related bugs.  Provided the necessary hardware is available,
+this is simple and reasonably efficient, and should also eliminate a
+reasonable selection of non-trivial bugs.  The main downside of this
+approach is that it requires non-standard (and presently non-existent)
+hardware, which makes it less practically useful than it otherwise
+would be.  There is also a philosophical argument that, as there is no
+indication that a bug has been fixed, if this approach were ever to
+become widely used it would lead to a kind of moral hazard, where
+programmers respond to the more accommodating hardware by becoming
+more sloppy, and so overall system reliability would not increase by
+as much as might otherwise have been expected.\editorial{Do I really
+  want this here?}
+
+There have also been a number of attempts to automatically fix heap
+management bugs, such as buffer overflows and use-after-free errors,
+most recently AutoPaG\cite{Lin2007} and Exterminator\cite{Novark2007}.
+These systems both take an example of a buffer overflow bug (assumed
+to be deterministic) and use various analyses to determine the root
+cause of the bug, eventually using this to produce a potential fix.
+In that, they are remarkably similar to the system currently under
+discussion; the main difference being the type of bug targeted.
+
+All of these systems attempt to fix bugs or otherwise prevent them
+from happening.  An alternative strategy is to make bugs less serious
+when they do happen.  The most famous example of such a strategy is
+probably failure obliviousness\cite{Rinard2004}, which waits until the
+protected program makes an invalid memory reference and then attempts
+to fix things up from the resulting exception handler using a number
+of heuristics.  DieHard\cite{Berger2006} is conceptually similar, but
+works pre-emptively rather than from a fault handler, by guessing
+where memory errors are likely to occur and modifying the program's
+memory map to make those errors as harmless as possible.  In this way
+programs are able to continue executing in spite of the presence of
+errors which would otherwise cripple them.  Failure obliviousness
+cannot, however, ever fix a bug, but instead merely lessens its
+effect\editorial{That's far too glib.}.  As such, these techniques can
+be seen as complementary to those discussed here.
+
+RX\cite{Qin2007} takes a third strategy.  Here, rather than
+attempting to fix the bug, an attempt is made to determine which
+subset of a program's functionality is bug-free, and then to restrict
+the program's inputs to only exercise that functionality.  The result
+is that inputs which might have triggered the bug continue to produce
+incorrect output, but the damage is at least contained rather than
+propagating throughout the program and potentially leading to a crash.
+This is arguably safe, although not according to the definition used
+in this paper, and can cover a wide variety of bugs with little
+overhead.
+
+\section{Limitations}\editorial{This veers into future work in a few places; meh.}
+
+While the above scheme is reasonably general, it does have a number of
+important limitations.  Most obviously, it can only be applied to
+scheduling-related bugs which cause the program to crash quickly.
+Bugs which do not lead to an obvious crash or which have a long lag
+time are unlikely to be handled well by this approach.  We consider
+briefly how these limitations might be ameliorated.
+
+Bugs which do not lead to an obvious crash can be tackled in several
+ways.  The most obvious approach is to simply ask the original
+programmer to provide a specification of correctness, but this request
+is unlikely to be well-received by many developers.  It would also be
+possible to allow the user to indicate when some unspecified
+undesirable thing has happened, and then just try to ensure that
+future executions behave differently to the current one, but this
+would probably require too many iterations to be particularly
+effective.
+
+Another approach would be to use existing error checking and debugging
+tools such as Valgrind\cite{Nethercote2007} or efence\needCite{} to
+convert some hidden bugs into more obvious ones, at the expense of
+some performance.  Going slightly further, dynamic invariant inference
+techniques such as Daikon or DIDUDE could be used to attempt to infer
+how the program is ``supposed'' to behave, and hence to detect
+deviations from that path, which might indicate undesirable behaviour.
+The aim could then be recast from fixing bugs to making the program
+behave more predictably, which is an equally valid goal and perhaps a
+more general one.  Invariant inference could also be used to improve
+the handling of long-lag bugs, by detecting the points at which
+invariants become false; these are likely to be relevant to the
+ultimate bug, which could help to direct the analysis phases to a
+useful characterisation more quickly.
+
+The handling of long-lag bugs could also be improved by employing more
+static analysis.  This could, for instance, be used to determine that
+a particular memory location is independent of the outcome of a
+particular branch, which would help to reduce the amount of analysis
+required.  This kind of analysis can be much less conservative when
+performed on program source code rather than on the binary, simply
+because the semantics of higher-level languages generally have
+stronger semantics, and so this would be most effective when performed
+with the assistance of the original developers.  Ideally, this would
+take the form of a small database of properties of the program which
+could be shipped with the binary, rather than requiring actual
+developer interaction at bug-fixing time.  Designing this database,
+and developing algorithms which can use it, is a topic for further
+research.
+
+The rather weak definition of correctness could also be regarded as a
+limitation: at present, we consider any patch which would prevent the
+observed execution from repeating itself to be sufficient to prevent
+the bug, which clearly does not agree precisely with most people's
+definition.  This can mean that we need to observe the bug several
+times before producing a fix.  The critical section selection
+heuristic is intended to ameliorate this, but it is not perfect.  Some
+form of static analysis, as already discussed, might improve matters
+here.
+
+There is one final limitation, more of this paper than SLI itself,
+which is that the evaluation is rather limited.  This makes it
+difficult to judge exactly how general SLI really is, and difficult to
+determine what its costs are.  This is caused largely by the
+logistical difficulties associated with finding, understanding, and
+then reproducing bugs in real programs, and the only real fix is for
+us to continue investigating more bugs.  We hope\editorial{dread} to
+do so in the future.
+
+\section{Conclusions}
+
+We have presented SLI, a system for automatically fixing specific
+synchronisation bugs in shared-memory programs using only their
+binaries, with minimal user intervention.  We have demonstrated that
+it can be used to fix real-world bugs in at least some cases, and
+discussed the compromises and trade-offs which are necessary in order
+to produce a practically useful implementation.  While these
+techniques do have a number of limitations and drawbacks, we feel that
+they provide a useful basis for ongoing work to extend the set of
+situations in which they are applicable.\editorial{Wibble wibble
+  wibble}
+
+\bibliographystyle{plain}
+\bibliography{$HOME/mendeley.bib/library}
+
+\end{document}
