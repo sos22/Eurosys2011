@@ -42,50 +42,11 @@ hardware on which the software is being run, which can often lead to
 bugs which only reproduce on some small subset of computers.  This
 makes testing for these bugs extremely difficult, so they are more
 likely than other kinds of bugs to remain undetected in shipped
-software, and also complicates the process of developing a fix, so
+software, and also complicates the process of developing a fix, and so
 once detected they remain unfixed for much longer.
 
-In particular, desktop software is increasingly multithreaded, whereas
-previously only server commonly was.  Desktop applications have
-several characteristics which exacerbate the problem further:
-
-\begin{itemize}
-\item More important state is stored in volatile storage.  Server
-  software is often designed to behave reasonably when power is lost,
-  and this state recovery has the useful side effect of reducing the
-  amount of data lost following a crash; desktop software tends not to
-  have such protection, or at least not to the same degree, and so
-  the risk of important data being lost is greater.
-
-\item The workload is more heterogeneous.  The workload places on a
-  server system often consists of a large number of similar requests
-  carried out one after another, whereas desktop applications often
-  perform more complex actions but perform them less often, with
-  different users driving the application in different ways.  This means
-  that different users will see different bugs.
-  
-  Another way of saying this is that human beings are good sources of
-  randomness, and desktop applications are directly exposed to them,
-  whereas servers only communicate with them at one remove.
-
-\item The software lifecycle is shorter.  Desktop applications
-  generally have more aggressive development cycles than server ones,
-  which can restrict the amount of testing which is possible.
-
-\item Desktop application developers are often less experienced in
-  developing multi-threaded applications, or in some cases simply less
-  able, which increases the number of bugs which are introduced.  It
-  is unclear why this should be, but it does seem to be supported by
-  many people's experiences\editorial{Not sure about this.}.
-
-\item Desktop software is much less likely to come with any kind of
-  useful support contract, and so it is much more difficult for
-  end-users to contact the original developers in order to ask for a
-  fix.
-\end{itemize}
-
 A number of techniques have been proposed for reducing the likelihood
-of these multi-threading bugs, including transaction
+of these multi-threading bugs, including transactional
 memory\cite{Shavit1997}, message passing systems\needCite{}, or
 automatic parallelization\cite{Bacon1994}.  While extremely useful,
 none of these have, thus far, seen widespread deployment.  The reasons
@@ -97,31 +58,31 @@ therefore a need for techniques which can ameliorate bugs found by
 end-users in programs developed with the currently widely-used shared
 memory model of concurrency.
 
-SLI, or Speculative Lock Insertion, is one potential approach to this
-problem.  It is able to fix some race-like bugs in x86 programs, given
-only the program binary and a reproduction of the bug, generating a
-modified binary whose behaviour is identical to that of the original
-except that it no longer suffers from the nominated bug.  The fixes so
-generated are safe, in the sense that any behaviour which is possible
-with the fix applied would also have been possible, if sometimes
-unlikely, without the fix.  Furthermore, the fixes will usually have
-very low performance overhead.
+In this paper, we introduce SLI, or Speculative Lock Insertion, as one
+potential approach to this problem.  It is able to fix synchronisation
+bugs in x86 programs, given only the program binary and a reproduction
+of the bug, generating a modified binary whose behaviour is identical
+to that of the original except that it no longer suffers from the
+nominated bug.  The fixes so generated are safe, in the sense that any
+behaviour which is possible with the fix applied would also have been
+possible, if sometimes unlikely, without the fix.  Furthermore, the
+fixes will usually have very low performance overhead.
 
 In order to make this feasible, we must make some assumptions about
 the nature of the bug which is to be fixed:
 
 \begin{itemize}
-\item First, we assume that it is caused by some oddity of the
+\item First, we assume that it is caused by some particular
   interleaving of memory accesses issued by different processors, so
   that some valid interleavings will lead to the bug reproducing and
   some will not.
 
 \item Second, we assume that the bug is one which can be detected
-  automatically.  Assertion failures and use-after-free bugs, for
-  instance, would satisfy this assumption, while incorrectly rendered
-  graphics would not.
+  automatically.  Assertion failures and page faults, for instance,
+  would satisfy this assumption, while incorrectly rendered graphics
+  would not.
 
-\item Third, we assume that the lag between the oddity of scheduling
+\item Third, we assume that the delay between the bug being triggered
   and the detection of the crash is small, usually on the order of
   microseconds to milliseconds.  This is necessary to keep the
   analysis tractable.
@@ -135,17 +96,18 @@ reasonable selection of realistic bugs\editorial{Need the results of
 Our approach has three basic phases:
 
 \begin{itemize}
-\item[1] Capture the bug which is to be fixed using some kind of
-  deterministic replay system.
+\item[1] Capture the bug which is to be fixed using a simple
+  deterministic replay system;
 \item[2] Characterise which parts of the captured execution are
-  necessary to cause the bug to reproduce.
+  necessary to cause the bug to reproduce; and
 \item[3] Create a fix which prevents the bug from reproducing.
 \end{itemize}
 
 The final stage of SLI is generating a fix.  This is, in our
-prototype, a binary patch to the original binary which inserts
+prototype, a binary patch to the original program which inserts
 additional synchronisation which ensures that the bug cannot reproduce
-in future executions.  To the extent that the bug has been accurately
+in future executions.
+To the extent that the bug has been accurately
 characterised, this will fix it.  Obviously, if the characterisation
 is inaccurate or incomplete then the fix will be to, but we do
 guarantee that the fix will be safe (in a limited sense, defined
@@ -405,16 +367,14 @@ is important: going back too far causes leads to a very complicated
 crash predicting expression, causing poor performance in the later
 stages of analysis, while not going back far enough risks missing
 information which is critical to producing a correct fix.  Our
-approach is to start with a very short suffix (currently roughly
-10ms), and then perform analysis on that.  If that produces a fix, we
-terminate.  Otherwise, we look backwards through the log until we find
-a store which would have been loaded by something in the crash
+approach is to start with a very short suffix (currently 10,000 memory
+accesses), and then perform analysis on that.  If that produces a fix,
+we terminate.  Otherwise, we look backwards through the log until we
+find a store which would have been loaded by something in the crash
 predictor for the current starting point, and set the starting point
 to that store and retry.  If we ever find that we've had to backtrack
-more than ten seconds then we terminate and try again with an enlarged
-set of potentially-racing addresses.\editorial{This is currently done
-  manually, and the timeout is mostly just me guessing, because the logs
-  don't include it.}
+more than 1,000,000 memory accesses then we terminate and try again
+with an enlarged set of potentially-racing addresses.
 
 \subsection{Second-order races}
 

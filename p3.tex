@@ -1,0 +1,972 @@
+\documentclass[10pt,twocolumn,preprint,natbib,authoryear]{sigplanconf}
+\usepackage{verbatim}
+\usepackage{color}
+\bibpunct{[}{]}{,}{a}{}{;}
+
+% force pdflatex to use A4 paper
+\setlength{\pdfpagewidth}{210mm}
+\setlength{\pdfpageheight}{297mm}
+
+\usepackage{amsmath}
+
+\newcommand{\editorial}[1]{\textcolor{red}{\footnote{\textcolor{red}{#1}}}}
+\newcommand{\needCite}{\editorial{need cite}}
+
+\begin{document}
+
+\conferenceinfo{Eurosys 2011}{date, City.} 
+\copyrightyear{2005} 
+\copyrightdata{[to be supplied]} 
+
+\titlebanner{Submitted to EuroSys'11}        % These are ignored unless
+%\preprintfooter{short description of paper}   % 'preprint' option specified.
+
+\title{Speculative Lock Insertion}
+%\subtitle{Subtitle Text, if any}
+
+% For double-blind reviewing:
+\authorinfo{}{}{}
+%\authorinfo{Name1}
+%           {Affiliation1}
+%           {Email1}
+%\authorinfo{Name2\and Name3}
+%           {Affiliation2/3}
+%           {Email2/3}
+
+\maketitle
+
+\begin{abstract}
+
+The increasing use of parallel hardware suggests that synchronisation
+bugs will be increasingly common, and hence that tools for diagnosing
+and fixing such bugs would be useful.  In this paper, we propose
+Speculative Lock Insertion, or SLI, as one possible such tool.  Using
+a combination of static and dynamic analysis techniques, SLI is able
+to automatically characterise and then fix a useful class of
+synchronisation bugs, starting from a reproduction of the bug and the
+program binary.  We demonstrate the techniques effectiveness using
+both artificial and real bugs, and discuss some of the trade-offs
+necessary in order to implement it.
+
+\end{abstract}
+
+\category{CR-number}{subcategory}{third-level}
+
+\terms
+term1, term2
+
+\keywords
+keyword1, keyword2
+
+\section{Introduction}
+
+There is a well-established trend in software engineering to make
+greater use of multiple threads, driven largely by the increasing
+availability of multi-processor systems and multi-core processors.
+While potentially paying large dividends in improved responsiveness,
+throughput, and power consumption, multi-threaded programming has an
+unfortunate tendency to lead to very subtle bugs.  Even worse, these
+bugs are often highly dependent on the low-level details of the
+hardware on which the software is being run, which can often lead to
+bugs which only reproduce on some small subset of computers.  This
+makes testing for these bugs extremely difficult, so they are more
+likely than other kinds of bugs to remain undetected in shipped
+software, and also complicates the process of developing a fix, and so
+once detected they remain unfixed for much longer.
+
+A number of techniques have been proposed for reducing the likelihood
+of these multi-threading bugs, including transactional
+memory\cite{Shavit1997} or automatic parallelization\cite{Bacon1994}.
+While extremely useful, none of these have, thus far, seen widespread
+deployment.  The reasons for this are not always entirely clear, but
+include concerns such as performance, a constrained problem domain, or
+a lack of a widely available and widely trusted implementation.  It
+seems unlikely that this situation will change in the immediate
+future, and there is therefore a need for techniques which can
+ameliorate bugs found by end-users in programs developed with the
+currently widely-used shared memory model of concurrency.
+
+In this paper, we introduce SLI, or Speculative Lock Insertion, as one
+potential approach to this problem.  It is able to automatically fix
+synchronisation bugs once they have been observed, given only the
+program binary and a reproduction of the bug, generating a modified
+binary whose behaviour is identical to that of the original except
+that it no longer suffers from the bug.  The fixes so generated are
+safe, in the sense that any behaviour which is possible with the fix
+applied would also have been possible, if sometimes unlikely, without
+the fix.  Furthermore, the fixes will usually have very low
+performance overhead, and the process of generating the fix itself
+takes only a moderate amount of time (ranging from seconds in simple
+cases to a few hours for more complicated bugs).
+
+Our approach consists of several key phases.  First, the bug must be
+captured under a deterministic replay system.  The exact details of
+how this is done do not matter, and so existing high-performance
+replay systems such as PRES\needCite{} could be used
+straightforwardly.  The captured trace is then examined in conjunction
+with the program binary so as to build a series of approximations of
+the parts of the program's behaviour which are most closely relevant
+to the bug, in a process similar to program slicing\needCite{}.  These
+approximations are simple acyclic state machines which can be run at
+certain points in a program's execution, and which predict whether the
+program is likely to crash, taking as input things like the contents
+of registers and the values returned by load instructions.  In
+particular, they can determine whether executing a particular subset
+of a program's instructions atomically at a particular point in the
+program's execution would have resulted in a crash, and this facility
+can be used to infer groups of instructions which should have executed
+atomically with respect to each other.  We then apply a simple
+transformation to the original program which wraps these accesses in a
+new global lock, and hence fix the bug.
+
+This analysis is, unfortunately, both unsound and incomplete, in the
+sense that the ``fixed'' program will still sometimes crash, and it
+will sometimes eliminate executions which would have been safe.  This
+is, to some extent, inevitable, as determining whether an arbitrary
+program will crash is incomputable, and to some extent an engineering
+trade-off: more powerful analyses could produce more accurate results,
+at the expense of greater computational complexity in deriving a fix.
+We discuss this in more detail in section\editorial{...}.
+
+In spite of this inaccuracy, the fixes generated by SLI are safe
+(ignoring bugs in the implementation), in the sense that any behaviour
+which is possible with a fix applied is also possible when the fix is
+not applied, assuming a model of program execution which we discuss in
+section\editorial{...}.
+
+\editorial{Identify instructions by a combination of current RIP and
+  backtrace.}
+
+\section{Capturing the bug}
+
+Before SLI proper starts, the bug to be fixed must be captured using a
+deterministic replay system (DRS).  This work does not attempt to
+advance the state of the art in DRSes, but does depend on them in
+order to be feasible, and so we discuss them briefly here.
+
+The only requirement we place on the choice of DRS is that it must
+capture an execution sufficiently precisely that the relevant fragment
+of execution can later be replayed as many times as necessary at the
+accuracy of individual memory accesses.  This captured execution does
+not need to be precisely the same as the original crashing execution,
+but the more different it is the more likely it is that SLI will fix
+the wrong bug.  The most obvious way of capturing an execution, used
+in our prototype, is to simply record every single memory access
+issued by the program, which is effective but has extremely high
+overhead.  This could be reduced by using a more intelligent recording
+mechanism such as PRES\cite{Park2009} or ODR\cite{Altekar2009}, both
+of which record only a few critical events and discover the rest only
+when they are needed during replay.  This approach can reduce overhead
+to a level where it is sensible to run with recording enabled by
+default.  An extreme form of this approach is provided by
+ESD\cite{Zamfir2010}, which logs nothing at all and instead attempts
+to recreate the path to failure given just the state of the program at
+the time of the failure.
+
+In a slightly different context, an automatic program exerciser such
+as CHESS\cite{Musuvathi2008} could be used to detect completely new
+bugs, which could then be passed to SLI to be automatically
+characterised and fixed.
+
+\section{Deriving a single-threaded explanation of the bug}
+
+The first phase of our algorithm is to derive an explanation of the
+bug which considers only the behaviour of the thread which crashed.
+The result of this analysis is a series of state machines,
+corresponding to instructions executed by the crashed thread towards
+the end of its life, which can predict whether the thread will crash
+starting from that instruction given a particular state of memory and
+registers.
+
+These machines are approximations of the program's real behaviour, and
+can exhibit both false positive and false negative errors, and so
+predict a crash where none will actually occur and predict safe
+execution when a crash is possible.  It would be possible to ``fix''
+the algorithm so as to eliminate one of these classes of errors, but
+this would not be particularly helpful, as it would not allow the
+system as a whole to provide stronger guarantees.  To see this,
+consider the two types of errors in turn:
+
+\begin{itemize}
+\item \emph{False positives.}  The state machines can sometimes
+  predict a crash where none is actually possible.  The effect of this
+  on the final fix is that it eliminates some safe schedules, and
+  hence reduces the program's parallelism more than necessary.
+  Parallelism is only useful to the extent that it improves
+  performance, and so the only guarantee on the overall system's
+  output which is made impossible by this kind of error is that the
+  final patch should have strictly minimal performance overhead.  It
+  seems unlikely that any system would be able to make such a
+  guarantee even in the absence of characterisation errors, and so
+  guaranteeing a false-positive-free characterisation is unhelpful.
+
+\item \emph{False negatives.}  The state machines can sometimes
+  predict that a path is safe when it is in fact doomed to crash.
+  This has two possible outcomes.  In the first, a fix is produced,
+  but it is over-specific, and hence only fixes part of the bug,
+  allowing the bug to reproduce in other circumstances.  As the
+  boundaries separating one bug from another are inherently
+  ill-defined, the alternative is to attempt to guarantee that
+  all bugs in the target program will be fixed after a single pass
+  of the tool, which is clearly impossible.
+
+  The other possible outcome is that no fix can be generated at all.
+  This would only be a problem if the overall system claimed to be
+  able to fix any bug.  This would require that it be able to take any
+  characterisation and transform it into a fix, which seems
+  over-ambitious.
+\end{itemize}
+
+This means that completely eliminating all characterisation errors of
+either class would not allow the overall system to provide any
+additional guarantees, and so would not be helpful.  Furthermore, it
+would require either introducing additional errors of the other class
+or significantly complicating the machines generated, which would
+reduce the likelihood of the later stages of fix generation completing
+successfully.  We do not, therefore, attempt it.
+
+When we do make approximations in the characterisation, we attempt, as
+far as possible, to ensure that the captured execution remains
+possible, and apply coarser approximation to executions which are ``a
+long way away'' from the captured one.  This makes it likely that any
+derived fix will at least prevent the bug from reproducing in exactly
+the same way on subsequence runs, even if it does not completely
+eliminate it.
+
+We limit the size of these state machines, expressed as the maximum
+distance of any node from the point for which the machine is being
+derived.  If the machine's size exceeds this limit, we arbitrarily
+remove some edges, which allows nodes to be combined, and hence reduce
+the effective size of the machine.  See section \editorial{...} for a
+discussion of the effects of this optimisation.
+
+\subsection{The proximal cause}
+The first phase of our algorithm is to locate the first point in the
+log at which something has definitely gone wrong, and hence to
+nominate one thread as being directly responsible for the crash.  A
+naive approach would simply use the point at which the program
+crashed.  In principle, this is always correct, and for some simple
+bugs, such as \verb|NULL|-dereferences or assertion failures, it works
+well.  However, for more complicated classes of bugs, such as
+use-after-frees, there can be a significant lag between the first
+definitely bad behaviour (such as the use of released memory) and the
+program crash, and this can cause later phases to take an excessively
+long time.  This can be mitigated by applying a dynamic analysis tool,
+such as Valgrind\needCite{}, to the captured execution, which provides
+a more accurate starting point for the rest of the analysis,
+significantly reducing the total time taken.  In our prototype, we use
+a straightforward analysis to detect use-after-free bugs at the first
+reference to released memory; combining this with other forms of
+analysis to detect other classes of bugs would be straightforward.
+
+The result of this initial analysis is generally a single-node state
+machine which captures the reason for the crash using only information
+which is available at the instruction on which the crash occurred.
+For instance, if the program crashed due to executing the instruction
+\verb|mov (%rax), %rdx| when \verb|%rax| did not point at a valid
+memory location then the machine will be
+\verb|if BadAddr(reg(rax)) then crash else no-crash| (translating the
+state machine into textual form using an obvious notation).
+
+\subsection{Deriving earlier state machines}
+This direct cause is an accurate summary of why the crash occurred,
+but is not, by itself, sufficient to derive a fix, as by the time the
+crashing instruction in executed it is generally too late to attempt
+to fix it.  It is therefore useful to move the expression backwards
+through the captured execution, and hence to determine an equivalent
+expression which can be evaluated earlier in the execution.  This is
+generally straightforward.  The log captured in the initial
+bug-recording phase allows us to determine, for any instruction, which
+instruction preceded it, and hence to apply the instruction to the
+state machine.  This transforms the machine to one which is valid
+before the instruction was executed.
+
+For instance, suppose that we have encountered the instruction
+\verb|add $4, %rax|, and, as above, the direct cause was
+\verb|if BadAddr(reg(rax)) then crash else no-crash|.  Writing
+\verb|rax0| for the value of \verb|rax| after the \verb|add|
+instruction and \verb|rax1| for the value before it, we know that
+\verb|rax0|$=$\verb|rax1|$+4$, and so the state machine becomes
+\verb|if BadAddr(reg(rax)+4) then crash else no-crash|.  If the next
+preceding instruction were \verb|mov %rcx, %rax| then the state
+machine would be rewritten to
+\verb|if BadAddr(reg(rcx)+4) then crash else no-crash|, and so forth.
+
+\subsubsection{Branch instructions}
+This technique allows the state machine to be transformed backwards
+across most simple instructions.  Branch instructions require slightly
+more care, however.  There are a few special cases.  The easiest is a
+two-exit branch where both branches have constant target addresses,
+and both targets were executed in the captured execution, and the
+untaken target occurred after the taken one in the execution.  In that
+case, we will be able to derive state machines for both targets and
+then produce a new state machine which consists of both target state
+machines and a new node which branches to one or the other depending
+on the branch condition.  If the untaken target occurred earlier then
+the taken one then combing the machines like this would risk
+introducing a cycle, which would complicate later analyses, and so in
+that case we treat this branch as one where the untaken target is
+never seen.
+
+In that case, or if the untaken target was genuinely never observed in
+the captured execution, we determine the branch's effects using a
+simple static analysis.  The first stage of this analysis is to build
+an approximation of the program's control flow graph starting from the
+untaken target instruction, stopping when we encounter an instruction
+for which we already have a state machine.  Function calls are handled
+by duplicating the called function into each possible call site.
+
+Occasionally, this analysis will fail, either because of an indirect
+branch whose target we cannot predict or because we hit a depth limit,
+and in this case we place a special failed node in the graph at that
+point.  Once the CFG is complete, edges which lead to these failed
+nodes are removed, so that there is no path from the starting
+instruction to any failed instruction; this effectively constrains the
+analysis to only consider executions which have a control flow which
+is similar to that observed when the bug was captured.  This should be
+sufficient to derive at least a partial fix.
+
+The next step is to reduce the CFG to an acyclic approximation of
+itself, in effect assuming that loops are executed at most once.  This
+assumption is, of course, unsound\editorial{This is probably the most
+  unsound step in the whole thing, actually.}, and will in the
+majority of executions cases be false, but is sufficient to provide us
+with a representative sketch of the program's behaviour, and hence to
+produce reasonable fixes.  We choose edges to remove based on two
+heuristics.  First and most importantly, we try not to remove any
+edges which are represented in the captured execution.  Second, 
+we try not to partition the graph, which minimises the number of
+paths which are discarded.
+
+The result of this is a DAG of instructions, rooted at the untaken
+target of the original branch instruction and whose leaves already
+have state machines.  It is then straightforward to propagate the
+state machines backwards from the leaves to the root using the same
+rewriting algorithm as we employ to backtrack state machines across
+dynamically executed instructions.  The result of this is that we are
+able to assign a state machine to the root instruction, and hence to
+assign a state machine to the original branch instruction.
+
+One important subtlety is that the acyclic subgraph must be re-derived
+for every instruction, and not reused.\editorial{Why?  I convinced
+  myself of this before, but don't remember the reasoning...}
+Consider a CFG with a while loop.  If you perform the breaking in the
+same way for every instruction then you edit the loop body out
+completely, but if you do it for every instruction then the machines
+for instructions befroe the head will omit the loop, but the machine
+for instructions inside the loop will assume that the loop executes
+precisely once.
+
+Indirect branches, where the target of the branch is computed
+dynamically at runtime, also pose an additional challenge here.  We
+handle these by using he collected execution trace as an oracle to
+make predictions about possible targets, and hence to continue to make
+some progress.  While this is unsound, it will at least provide enough
+information that the observed execution is completely modelled, and
+hence that the observed bug is in principle fixable. \editorial{...}
+
+\subsubsection{Memory accesses}
+
+Load instructions also require special handling in this scheme, as the
+state machine for a given instruction may need to reference a load
+issued by an instruction which occurs after it, and the value of the
+relevant memory location might have changed by the time it executes.
+We solve this problem by labelling each load expression with the
+instruction pointer and call stack at the point at which it is issued,
+which allows state machines to refer to loads which have not yet
+happened, and hence to capture the effects of future loads on the
+thread's behaviour.
+
+These labels are ambiguous, in that multiple dynamic loads might be
+referred to by a single label if the program's control flow loops.
+However, as mentioned above, our analysis in effect only considers an
+acyclic subgraph of the program's full control flow graph, which is
+sufficient to disambiguate the labels.
+
+The labels can also be ambiguous if a single instruction issues
+multiple loads.  In the x86 instruction set, which we have targeted in
+our initial prototype, the only common instructions which have this
+property are the string instructions, which issue a simple instruction
+in a loop.  In keeping with our strategy elsewhere, we handle this by
+breaking the loop, and assuming that the simple instruction executes a
+single time.  These simple instructions themselves issue at most one
+load, and so the ambiguity is avoided.
+
+The state machines must also model the effects of stores.  To do this,
+each edge in the machine has a list of <address, value, size>
+tuples\editorial{Actually, I didn't bother with the size part.}, where
+address and value can be arbitrary expressions, indicating what stores
+the program will issue when it follows that edge.  Backtracking across
+a store instruction is then a simple matter of adding another entry to
+this list.\editorial{That doesn't actually make sense, but it sounds
+  kind of plausible on a first pass, so maybe I'll get away with it.}
+
+Unfortunately, the lists of stores associated with an edge in the
+state machine can become quite large for even modest test cases, and
+the vast majority of these stores will never be used.  We therefore
+ignore stores which occur more than a certain distance from the point
+for which the state machine is being derived; see section
+\editorial{...} for a discussion on the effects this has upon
+performance and correctness.
+
+\subsubsection{Resolving memory accesses}
+
+Many load instructions will access a thread's local stack.  While it
+is, in principle, possible for one of these accesses to be involved in
+a concurrency bug, it is in practise highly unlikely, as it is unusual
+for one thread to access another's stack\editorial{Prove it}.  It is
+therefore useful to be able to resolve these loads, by finding the
+instruction which produced the data which is loaded, without
+performing more expensive analysis steps.  We use a simple dynamic
+analysis-based heuristic in order to do this.  When we encounter a
+store instruction, we check if the instruction occurred in the
+captured execution.  If it did, and if it stored to the stack in that
+case, we check through the log to determine which instructions
+subsequently loaded the stored value.  We then check if any of those
+loads appear in the current state machine, and, if they do, we assume
+that they will always load the value stored by the current
+instruction.  This allows the load to be eliminated.
+
+This is obviously an unsound heuristic, and will occasionally produce
+incorrect predictions, which will lead to an incorrect
+characterisation of the program's behaviour.  The most common cause of
+such an inaccurate prediction is that the captured log does not
+contain all of the relevant data flow edges.  In that case, the
+characterisation will be accurate for the observed execution, but not
+necessarily for significantly different ones, which is acceptable.
+
+Another possibility is arrays on the stack.
+
+Simple control-flow dependencies do not, in general, cause this
+heuristic to produce inaccurate predictions.  If the store and load
+are under the same condition, it trivially works fine.  If the store
+is under a condition which the load isn't under, it works fine because
+of the way we work backwards through the log (see section
+\editorial{...} for an example).  If the load is under a condition and
+the store isn't then when the load doesn't happen we're trivially
+fine, and when it does we predict that it gets satisfied and we're
+fine.
+
+We get a problem if the function from load,store pairs to
+satisfactions is non-constant.
+
+\subsubsection{Example}
+
+As an example, consider this simple program in x86 assembly language:
+
+\begin{verbatim}
+1: mov %rax, 8(%rsp)
+2: je 4
+3: mov %rdx, 8(%rsp)
+4: mov 8(%rsp), %rax
+5: mov (%rax), %rax
+\end{verbatim}
+
+Assume that we crash on statement 5, that all of the instructions are
+represented somewhere in the dynamically captured execution, and that
+the branch on statement 2 was taken immediately before the crash (so
+that statement 3 was not executed this time).  The proximal cause of
+the crash will be
+\verb|if BadAddr(reg(rax)) then crash else no-crash|.  This will then
+be backtracked to statement 4, producing the state machine
+\verb|if BadAddr(load(reg(rsp)+8)@4) then crash else no-crash|.  The
+dynamically previous instruction is statement 2, which is a branch.
+We will therefore attempt to derive a CFG from the program, which in
+this case is trivial and is shown in figure\editorial{...}.
+Initially, only statement 3 has state machines for all of its
+successor instructions, and so we will attempt to derive its state
+machine first.  The stack resolution heuristic will provide a solution
+in this case, allowing a state machine of
+\verb|if BadAddr(reg(rdx)) then crash else no-crash| to be derived
+for statement 3.  Statement 2's state machine can then be derived,
+and becomes:
+
+\begin{verbatim}
+if CondEq
+then
+   if BadAddr(load(reg(rsp)+8)@4)
+   then
+      crash
+   else
+      no-crash
+else
+   if BadAddr(reg(rdx))
+   then
+      crash
+   else
+      no-crash
+\end{verbatim}
+
+This completes statement 2's state machine, and so we attempt to
+derive statement 1's machine.  As before, the stack resolution
+heuristic applies, and so the load can be resolved to match with
+the current store, and so the final state machine is:
+
+\begin{verbatim}
+if CondEq
+then
+   if BadAddr(reg(rax))
+   then
+      crash
+   else
+      no-crash
+else
+   if BadAddr(reg(rdx))
+   then
+      crash
+   else
+      no-crash
+\end{verbatim}
+
+(It should be emphasised that the actual programs produced are state
+machines, and do not have to be block-structured programs; the
+block-structured form is simply a more convenient notation.  This
+means that is not actually necessary to duplicate the branches like
+this in all cases, which can ameliorate an otherwise exponential
+increase in the complexity of the state machines.)
+
+If the branch had not been taken, so statement 3 did execute, then the
+a similar final result will be obtained.  In that case, we will
+backtrack from statement 4 to statement 3, again using the stack load
+resolution heuristic, and so statement 3's state machine is
+\verb|if BadAddr(reg(rdx)) then crash else no-crash|, as before.  We
+then backtrack to statement 2.  In this case, both branches already
+have state machines assigned to them, and so the new state machine can
+be produced directly, and is identical to that shown in
+figure\editorial{...}.  From here, statement 1's state machine can be
+derived in the same way as before, producing an identical answer.
+
+\section{Investigating the multi-threaded behaviour of the program}
+
+Once a single-threaded characterisation of the bug has been produced,
+it is possible to investigate the crashed thread's interactions with
+other threads in the system.  Our basic approach here is to replay the
+program's execution, and discover points at which the state machine
+would have returned \verb|no-crash| if it had executed atomically.
+From these, it is possible to infer which parts of the program's
+execution should be synchronised against each other, and hence to
+suggest some potentially useful synchronisations.
+
+\editorial{in principle, this phase can run as soon you have any state
+  machines at all to work with, but you get a fairly major performance
+  win if you batch things up a bit.}
+
+The first phase is running the program forwards, evaluating the state
+machine wherever it is valid to do so (i.e. wherever the current
+timestamp matches the timestamp for which the state machine was
+derived).  This produces the list of interesting addresses for the
+machine.  It also allows us to constant-fold away references to
+registers in the state machine.  We then combine all of the
+interesting address lists for the machines in the current batch to
+produce an overall interesting address list.  We then replay again
+recording every store to an interesting address.  We can then consider
+each machine in the batch, and roll it forwards over the memory logs,
+evaluating as we go.  The points at which the state machine
+transitions between \verb|crash| and \verb|no-crash| outputs are then
+used as the boundaries of critical sections in other threads.
+
+\subsection{Selecting a fix}
+
+This process will produce some set of possible fixes (either zero or
+one for each state machine), and it is then necessary to select an
+appropriate one to instantiate into a binary patch 
+
+\subsection{Example}
+Thread 1:
+
+\begin{verbatim}
+A: mov global1, %rax
+B: cmp $0, %rax
+C: je H
+D: mov (%rax), %rcx
+E: cmp $5, %rcx
+F: je H
+G: call __assert_fail
+H: ret
+\end{verbatim}
+
+\begin{verbatim}
+V: mov $5, (some_variable)
+W: mov &some_variable, (global1)
+...
+X: mov $0, (global1)
+Y: mov $0, (some_variable)
+...
+Z: jmp V
+\end{verbatim}
+
+This is intended to model the common broken privatise bug pattern,
+where one thread is attempting to make a data structure private in
+order to clean it up but fails to do so, leading to incorrect
+behaviour.  The first thread first loads a pointer to the structure
+from a global variable, and then, if the pointer is non-NULL,
+dereferences it and asserts that the result is equal to five.
+Meanwhile, the second thread is constantly allocating a new data
+structure (\verb|T|), initialising it (\verb|U|), publishing it
+(\verb|V|), doing some work (\verb|...|), and then attempting to clean
+up (\verb|W| through \verb|Y|).  Unfortunately, there is insufficient
+synchronisation here, as the first thread might cache the pointer in
+\verb|rax| after \verb|global1| has been cleared by thread 2 at
+\verb|X|, and hence see the incorrect value stored at \verb|Y|,
+leading to a crash.
+
+When SLI runs, it will be presented with a log showing that the
+program crashed.  Using semantic knowledge of the system's standard
+library, the initial analysis will determine that executing
+instruction \verb|G| will definitely lead to a crash, and so the
+proximal cause will be simply \verb|crash| at \verb|G|.  This is then
+backtracked to instruction \verb|F|, and static analysis will then
+determine that the function would have returned if it had taken the
+other branch.  We assume that making the function which crashed in the
+observed reproduction return is sufficient to avoid the bug, and so
+the state machine at \verb|F| is set to
+\verb|if CondEq no-crash else crash|.  This can be backtracked
+straightforwardly to produce a state machine for \verb|D| of
+
+\begin{verbatim}
+if 5 != (load %rax at D)
+then
+    crash
+else
+    no-crash
+\end{verbatim}
+
+and one for \verb|A| of
+
+\begin{verbatim}
+if 0 != (load global1 at A)
+then
+    if 5 != (load (load global1 at A) at D)
+    then
+         crash
+    else
+         no-crash
+else
+    no-crash
+\end{verbatim}
+
+Backtracking will then continue through the log until sufficient state
+machines are available to form a useful batch for the next phase.
+None of those machines will be interesting in this case, and so we
+ignore them here.
+
+We then go and build the interesting address list, which in this case
+will simply contain \verb|global1| and \verb|some_variable|.
+
+We then build the memory log, which will look like this:
+
+\begin{verbatim}
+V.1 some_variable = 5
+W.1 global1 = &some_variable
+X.1 global1 = 0
+Y.1 some_variable = 0
+V.2 some_variable = 5
+W.2 global1 = &some_variable
+X.2 global1 = 0
+Y.2 some_variable = 0
+...
+\end{verbatim}
+
+The state machine for \verb|A| will then report that a crash is never
+likely if it executes atomically, and so we will propose a fix which
+places one critical section from \verb|A| to \verb|D|, and
+single-instruction critical sections at each of \verb|V|, \verb|W|,
+\verb|X|, and \verb|Y|.  This is a correct fix, and prevents the bug
+from occurring.
+
+The state machine for \verb|D| will also be evaluated.  In this case,
+it will discover that the state machine is only unsafe when executed
+between \verb|Y.1| and \verb|V.2|, and so will propose a fix which
+consists of a single-instruction critical section on \verb|D| and
+another critical section from \verb|V| to \verb|Y|, which is again a
+correct fix.
+
+In this case, the prioritisation heuristic will prefer the second
+patch, as it introduces a smaller number of additional critical
+sections, and the first patch will only be used if the binary patcher
+fails to instatiate the second.
+
+
+\subsection{Implementation details of the binary patcher}
+
+Once an appropriate dynamic critical section has been discovered, it
+must be converted to a static one.  Mapping the dynamic points into
+particular instructions is generally straightforward, but mapping
+ranges can be more difficult if they cross control flow branches.
+
+We simplify the problem by detecting if the start and end of a
+critical section are in different functions (as delimited by
+\verb|call| and \verb|ret| instructions) and, if they are,
+backtracking up the call stack to their most recent common stack
+frame.  Besides simplifying the binary patching problem, this has the
+(sometimes) useful side-effect of expanding the critical section, and
+generally moving it to boundaries which are more likely to correspond
+to the original programmers' ideas about where critical section
+boundaries ``should be''\editorial{Rephrase}.\editorial{\emph{Should}
+  do this; currently rely on doing it by hand.}
+
+Once we have obtained start and end points in the same function frame,
+we examine the program's machine code starting from the start point,
+exploring its control flow graph until we encounter the end point or
+an indirect branch (the exploration process is sufficiently naive that
+indirect branches cannot be sensibly predicted, and so exploration has
+to stop at that point).  The CFG thus obtained is then trimmed to only
+contain paths starting at the start node and ending at the end node.
+The desired synchronisation can then be added to this CFG in a
+straightforward way (being careful to always release any needed locks
+when leaving the patch), and the result recompiled into a fragment of
+position-independent machine code.  This is combined with a stub
+loader and built into an ELF shared library, which can be loaded into
+the target program using \verb|LD_PRELOAD| (or an equivalent runtime
+mechanism using).  The stub loader is then responsible for actually
+applying the patch to the program.  We use two main strategies for
+doing so:
+
+\begin{itemize}
+\item The entrypoint instruction can be replaced with a direct jump to
+  the patch fragment.  This is the most efficient way of gaining
+  control, but is only safe if the entrypoint instruction is large
+  enough to contain the jump instruction.  Otherwise, we would also
+  have to change the next instruction, which is dangerous without
+  performing sufficient static analysis to be confident that there are
+  no undiscovered jumps to it.  Doing that kind of static analysis on
+  arbitrary binary programs is challenging and we do not attempt it.
+
+\item Alternatively, we can use the processor's debug facilities to
+  gain control, where available.  These can usually be used to insert
+  breakpoints on arbitrary instructions, whether via the debug
+  registers\needCite{} or by simply patching in a debug instruction,
+  and hence can be used to gain control at any point in the program.
+  Unfortunately, they are much slower than a simple direct branch, as
+  they require an expensive trap to the operating system kernel and,
+  on Unix-like systems, the delivery of a signal.
+\end{itemize}
+
+We use direct jumps wherever possible and the debug facilities
+otherwise.\editorial{Discussion of how often these things actually
+  work?}
+
+\section{Deadlocks}
+
+There is a risk that introducing additional synchronisation into the
+program will itself introduce a deadlock.  We mitigate the issue
+slightly by using a timeout on our introduced locks, so that deadlocks
+at least resolve themselves in bounded time, but this can lead to
+extremely poor performance or incomplete fixing of bugs.  This could
+be avoided in some cases by performing static analysis to select
+critical sections which are less likely to lead to deadlocks, at the
+expense of potentially not being able to find any safe fix at all.
+
+One possible approach would be to integrate with a deadlock immunity
+system such as Dimmunix\cite{Jula2008}, detecting and fixing deadlocks
+as they happen.  The system would then hopefully eventually converge
+on a state which is both deadlock and race free.  It should also be
+possible in many cases to simulate the effect which SLI lock insertion
+would have on Dimmunix, and hence to determine that Dimmunix
+ultimately would insert a healing lock before it needs to do so, which
+would eliminate the need to reproduce the deadlock before fixing it.
+Of course, the Dimmunix lock order graph is itself only an
+approximation, and so this would not be guaranteed to be effective in
+every case, but it seems likely that it would be sufficient in most
+situations.
+
+We have not implemented this in our current prototype.
+
+\section{Validation of assumptions}
+
+Main assumptions which we make:
+
+-- the CFG acyclicisation thing.  Not really an assumption, although
+we could maybe eval it by trying a couple of loop unrolling passes.
+Probably don't have time now.  Also have the problem that it wouldn't
+make any difference for any of our test bugs.
+
+We assume in our analysis that a thread's stack will never be modified
+by another thread.  We validated this assumption by writing a custom
+Valgrind\needCite{} skin which counts the number of cross-thread stack
+writes by a program, and demonstrated that a number of commonly-used
+programs make very few such accesses (the results are in table
+\editorial{...}).  These experiments are more than a bit
+noddy\editorial{...}, and are not intended to tell anyone anything
+which they don't already know, but are sufficient to suggest that the
+assumption that stacks are thread private is unlikely to be a serious
+source of inaccuracy in our characterisations.
+
+\begin{tabular}{lll}
+Program & How exercised & Number of cross-thread stack modifications \\
+Firefox & Started, used to load a simple page, and shut down again & 18 \\
+The Gimp & Started, used to open a JPEG file, and then shut down again & 6 \\
+Thunderbird & Started, used to retrieve email from an IMAP server, and shut down again & 5\\
+Amarok & Started and shut down again & 12
+\end{tabular}
+
+Another key assumption is the stack satisfaction heuristic, used to
+match loads and stores to stack addresses, described in
+section\editorial{...}.  To validate this assumption, we implemented
+another Valgrind skin which logged all stack accesses made by a
+process, and then used an offline analysis to first determine what
+predictions the heuristic would have made, and when they would have
+been correct.  We used this tool to run part of the coreutils test
+suite\editorial{version? which part?}.  The heuristic made 3067407
+predictions, of which 53305 were incorrect, or roughly 1.7\%.  This is
+likely to be an over-estimate of the inaccuracy introduced by the use
+of the heuristic, as in many cases even an incorrect prediction will
+provide a ``reasonable'' answer, and so the characterisation derived
+will often still be sufficiently good to produce a fix.  As such,
+these errors, while introducing some inaccuracy, do not completely
+prevent the overall system from working.
+
+-- Dropping deep loads.  Just show a graph of how likely loads are to
+ever get used with respect to depth and how much we save by dropping
+them -- do that on the Saturday when I get back.
+
+-- Dropping deep branches.  Not sure about this one.  We can certainly
+show how much we save by dropping; not sure whether we can show how
+much it costs us -- Saturday again.
+
+\section{Evaluation}
+
+I've demonstrated that it works on a whole slew of simple bugs now,
+the kernel of a real bug, and (hopefully by the time I submit) one
+real honest-to-goodness bug.
+
+Things to look at:
+
+-- How long does it take.  How is the time taken broken down.  Doing
+this for the real bug is the highest priority, but doing it for some
+of the artificials would also be good.  Doesn't require much thought,
+so might be able to do it on Friday.
+
+-- Maybe look at how much memory we need?  Tricky because of the
+garbage collector.
+
+-- How many candidates do we generate.  Are they correct, performant,
+complete, etc?  For the real bug, only bother counting them and
+classifying them as correct, incorrect, or incomplete.  For some of
+the artificial ones I can probably invent a suitable micro-benchmark,
+although I suspect that it'll just say that we suck.  Skip it.
+
+\section{Related work}\editorial{This is a bit of a bestiary.  Could do with a bit more analysis.}
+
+There have been a number of previous systems which tackle similar
+problems.  Most recently, Kivati\cite{Chew2010a} attempts to fix
+single-variable atomicity violations automatically by combining a
+static analysis pass with some runtime support.  The result is able to
+prevent many common kinds of race-like bugs with low overhead.  There
+are a couple of important differences between their approach and ours:
+
+\begin{itemize}
+\item SLI is only activated once a bug has been observed, whereas
+  Kivati runs at all times.  This means that it is more likely to
+  ``fix'' perfectly benign races.  It also means that the fixes cannot
+  easily be applied without also requiring the Kivati runtime,
+  whereas, once generated, SLI fixes can stand alone without any of
+  the rest of the SLI infrastructure, which may sometimes improve
+  performance.
+
+\item Kivati requires access to the program's source code during the
+  initial static analysis phase, whereas SLI only requires the binary.
+
+\item In theory, SLI can be applied to a wider class of bugs than
+  Kivati, although in practise the complexity of the analysis and the
+  difficulty of generating a fix for more complicated bugs means that
+  this is not a particularly useful ability.
+\end{itemize}
+
+Another approach, taken by systems such as
+Isolator\cite{Ramalingam2009} and ToleRace\cite{Kirovski2007},
+restricts the problem domain to asymmetric races, where one thread is
+correctly following a locking discipline while some other thread is
+not, and seeks to ensure that the correct thread continues to be
+correct despite the misbehaviour of the incorrect one.  This might,
+for instance, be useful if the correct thread is controlled by an
+application while the incorrect one is controlled by a library which
+the application writer is unable to modify.  As with Kivati, they do
+not target specific bugs.
+
+Atom-Aid\cite{Lucia2009} is another approach to race bug
+mitigation, in this case using hardware transactional memory support.
+Their approach is to bundle sequences of memory accesses into
+transactions according to some heuristics, effectively reducing the
+number of permissible schedules and hence the scope for memory
+ordering related bugs.  Provided the necessary hardware is available,
+this is simple and reasonably efficient, and should also eliminate a
+reasonable selection of non-trivial bugs.  The main downside of this
+approach is that it requires non-standard (and presently non-existent)
+hardware, which makes it less practically useful than it otherwise
+would be.  There is also a philosophical argument that, as there is no
+indication that a bug has been fixed, if this approach were ever to
+become widely used it would lead to a kind of moral hazard, where
+programmers respond to the more accommodating hardware by becoming
+more sloppy, and so overall system reliability would not increase by
+as much as might otherwise have been expected.\editorial{Do I really
+  want this here?}
+
+There have also been a number of attempts to automatically fix heap
+management bugs, such as buffer overflows and use-after-free errors,
+most recently AutoPaG\cite{Lin2007} and Exterminator\cite{Novark2007}.
+These systems both take an example of a buffer overflow bug (assumed
+to be deterministic) and use various analyses to determine the root
+cause of the bug, eventually using this to produce a potential fix.
+In that, they are remarkably similar to the system currently under
+discussion; the main difference being the type of bug targeted.
+
+All of these systems attempt to fix bugs or otherwise prevent them
+from happening.  An alternative strategy is to make bugs less serious
+when they do happen.  The most famous example of such a strategy is
+probably failure obliviousness\cite{Rinard2004}, which waits until the
+protected program makes an invalid memory reference and then attempts
+to fix things up from the resulting exception handler using a number
+of heuristics.  DieHard\cite{Berger2006} is conceptually similar, but
+works pre-emptively rather than from a fault handler, by guessing
+where memory errors are likely to occur and modifying the program's
+memory map to make those errors as harmless as possible.  In this way
+programs are able to continue executing in spite of the presence of
+errors which would otherwise cripple them.  Failure obliviousness
+cannot, however, ever fix a bug, but instead merely lessens its
+effect\editorial{That's far too glib.}.  As such, these techniques can
+be seen as complementary to those discussed here.
+
+RX\cite{Qin2007} takes a third strategy.  Here, rather than
+attempting to fix the bug, an attempt is made to determine which
+subset of a program's functionality is bug-free, and then to restrict
+the program's inputs to only exercise that functionality.  The result
+is that inputs which might have triggered the bug continue to produce
+incorrect output, but the damage is at least contained rather than
+propagating throughout the program and potentially leading to a crash.
+This is arguably safe, although not according to the definition used
+in this paper, and can cover a wide variety of bugs with little
+overhead.
+
+\section{Future work}
+
+Integration with DIDUCE/Daikon invariant inference.
+
+\section{Conclusions}
+
+We have presented SLI, a system for automatically fixing specific
+synchronisation bugs in shared-memory programs using only their
+binaries, with minimal user intervention.  We have demonstrated that
+it can be used to fix real-world bugs in at least some cases, and
+discussed the compromises and trade-offs which are necessary in order
+to produce a practically useful implementation.  While these
+techniques do have a number of limitations and drawbacks, we feel that
+they provide a useful basis for ongoing work to extend the set of
+situations in which they are applicable.\editorial{Wibble wibble
+  wibble}
+
+\appendix
+\section{Appendix Title}
+
+This is the text of the appendix, if you need one.
+
+\acks
+
+Acknowledgments, if needed.
+
+\bibliographystyle{eurosys}
+
+\bibliography{eurosys-sample-bib}    
+
+\end{document}
+
