@@ -1,0 +1,3 @@
+    0.000000 start
+    0.404781 read initial snapshot
+    0.970785 have memory trace of crashed thread
