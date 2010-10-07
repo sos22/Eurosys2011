@@ -3,6 +3,11 @@
 import sys
 import math
 
+if sys.argv[1] == "-n":
+    normalise = True
+else:
+    normalise = False
+
 rows = []
 for l in sys.stdin.xreadlines():
     w = l.split()
@@ -30,9 +35,10 @@ def sd(x):
 means = map(mean, columns)
 sds = map(sd, columns)
 
-norm_factor = means[-1]
-means = [x/norm_factor for x in means]
-sds = [x/norm_factor for x in sds]
+if normalise:
+    norm_factor = means[-1]
+    means = [x/norm_factor for x in means]
+    sds = [x/norm_factor for x in sds]
 
 print name,
 print "\t",

@@ -1,6 +1,7 @@
 \documentclass[10pt,twocolumn,preprint,natbib,authoryear]{sigplanconf}
 \usepackage{verbatim}
 \usepackage{color}
+\usepackage{graphicx}
 \bibpunct{[}{]}{,}{a}{}{;}
 
 % force pdflatex to use A4 paper
@@ -196,8 +197,19 @@ perfect characterisation, and so it will not be possible to guarantee
 to only eliminate dangerous schedules.  However, making such a
 guarantee would also require that the later stages of the system could
 also guarantee to transform an arbitrary characterisation into a fix
-which did not eliminate any additional schedules.\editorial{I want to
-  say that's impossible, but I can't prove it.}
+which did not eliminate any additional schedules.  Define a schedule
+to be a linearisation of the non-stack-local memory accesses produced
+by a program.  The schedule produced by a parallel program can then be
+regarded as one of its outputs, and determining whether a program
+adheres to a given synchronisation property is then equivalent to
+deciding a non-trivial property on the output of a Turing machine.  By
+Rice's theorem, this is incomputable.  It seems likely that precisely
+imposing a synchronisation policy is harder then checking whether a
+program already follows the policy, and so this strongly suggests that
+imposing such a policy is, in the general case, impossible.
+Eliminating all false positives would therefore be unlikely to be
+helpful.\editorial{Do I really need all of this?  More to the point,
+  is it actually correct?}
 
 Likewise, the effect of a false negative is to only partially resolve
 a bug, so that some possible manifestations remain possible.  Provided
@@ -232,8 +244,11 @@ feasible, it should be made on these speculative paths.
 
 We also attempt to make the machine more accurate at points which are
 nearer to the crash, and approximate more aggressively at points which
-occurred earlier in the execution.\editorial{...}
-
+occurred earlier in the execution.\editorial{A good idea because older
+  instructions require more analysis, so to keep it plausibly quick
+  you need to approximate whether you want to or not.  Also, stuff
+  which happened shortly before the crash is more likely to be
+  interesting, anyway.}
 
 \subsection{The proximal cause}
 The first phase of our algorithm is to locate the first point in the
@@ -611,9 +626,9 @@ which all unsafe states can be eliminated and weakly preferring fixes
 with a smaller number of critical sections.
 
 In our evaluation, there are generally only a small number of possible
-fixes (half a dozen at most), of which some are obviously superior to
-others, and so the exact choice of prioritisation heuristic does not
-appear to be critical.
+fixes, all of which are correct and none would obviously lead to
+pathological performance, and so the exact choice of prioritisation
+heuristic does not appear to be critical.
 
 \subsection{Example}
 
@@ -831,7 +846,7 @@ make any difference for any of our test bugs.
 
 We assume in our analysis that a thread's stack will never be modified
 by another thread.  We validated this assumption by writing a custom
-Valgrind\needCite{} skin which counts the number of cross-thread stack
+Valgrind\needCite{} tool which counts the number of cross-thread stack
 writes by a program, and demonstrated that a number of commonly-used
 programs make very few such accesses (the results are in table
 \editorial{...}).  These experiments are more than a bit
@@ -875,26 +890,285 @@ much it costs us -- Saturday again.
 
 \section{Evaluation}
 
-I've demonstrated that it works on a whole slew of simple bugs now,
-the kernel of a real bug, and (hopefully by the time I submit) one
-real honest-to-goodness bug.
+\begin{table*}
+\begin{tabular}{llllll}
+Name of test & Nature & Number of fixes & Time taken & Size of logfile & Other name\\
+ & & fixes suggested & (seconds) & (MiB) & \\
+\hline
+toctou & Synthetic simple TOCTOU & 1 & $1.18 \pm 0.02$ & 28 & race3\\
+twovar & Synthetic two-variable & 2 & $1.89 \pm 0.03$ & 31 & race7\\
+       & atomicity violation &&&&\\
+publish & Synthetic broken publish pattern & 2 & $1.15 \pm 0.02$ & 31 & race8\\
+privatize & Synthetic broken privatize pattern & 2 & $5.11 \pm 0.05$ & 43 & race9\\
+\hline
+glibc & Kernel of a genuine atomicity & 6 & $8.15 \pm 0.03$ & 48 & race4\\
+      & violation & & & & \\
+\hline
+thunderbird & Genuine TOCTOU & 1 & $4739 \pm 6.19$ & 758 &
+\end{tabular}\editorial{Remove the last column}
+\caption{Summary of results obtained from running the bug fixing
+  program five times on a single log file collected from each bug.}
+\end{table*}
+
+\begin{figure*}
+\includegraphics{timing/timings.pdf}
+\caption{Breakdown of how long the various phases take, as fractions
+  of the entire fix-generating process.  Mean and standard deviation
+  from five runs on a single log file.}
+\end{figure*}
+
+\begin{figure*}
+\includegraphics{timing/without_replay.pdf}
+\caption{Break down of how long the phases take, ignoring time spent
+  in the replay engine.  Mean and standard deviation from five runs on
+  a single log file for each bug.}
+\end{figure*}
+
+\begin{figure*}
+\editorial{Run the experiment and then build the graph.}
+\caption{Breakdown of the phases from running the fixer on five instances
+  of the glibc test bug.}
+\end{figure*}
 
 Things to look at:
-
--- How long does it take.  How is the time taken broken down.  Doing
-this for the real bug is the highest priority, but doing it for some
-of the artificials would also be good.  Doesn't require much thought,
-so might be able to do it on Friday.
 
 -- Maybe look at how much memory we need?  Tricky because of the
 garbage collector.  Could maybe do a graph of memory used versus time
 taken?  It's going to be very implementation-specific, though.
 
--- How many candidates do we generate.  Are they correct, performant,
-complete, etc?  For the real bug, only bother counting them and
-classifying them as correct, incorrect, or incomplete.  For some of
-the artificial ones I can probably invent a suitable micro-benchmark,
-although I suspect that it'll just say that we suck.  Skip it.
+One important parameter to the system is how far to backtrack through
+the crashed thread.  For implementation reasons, our prototype will
+always backtrack to a branch instruction, and for the purposes of this
+evaluation we limited this backtracking to ten branches.  We
+investigate the effect of changing this parameter in section
+\editorial{...}.
+
+\subsection{Description of test bugs}
+
+\verb|toctou|, a simple two-thread time-of-check, time-of-use race.
+In this test, one thread loops incrementing a counter, while another
+thread repeatedly issues pairs of loads of the counter and asserts
+that the loads returned the same value.  Our prototype generates a
+single suggested fix, which consists of two critical sections.  One of
+these sections protects the write-back of the incremented counter in
+the first thread, while the other protects the two loads in the second
+thread.  This is a correct and minimal fix.
+
+\verb|twovar|, a two-variable atomicity violation.  In this test,
+there are two global variables, and one thread loops setting both to
+five and then setting both to seven while another thread loops loading
+both and asserting them to be equal.
+
+\verb|publish|, a broken implementation of the publish pattern.  In
+this pattern, a structure is initialised by one thread and then
+published by writing its address into a global pointer.  Other threads
+then occasionally read this global pointer and, if it contains a
+non-\verb|NULL| pointer, use the referenced object.\editorial{I'm
+  convinced that this is a standard pattern, and that I didn't invent
+  the term, but I can't find a reference.}  This is safe if correctly
+implemented, but in this test the programmer published the structure
+before finishing constructing it, which leads to the other thread
+eventually crashing.  The test case consists of two threads, one of
+which repeatedly publishes and un-publishes a structure and the other
+of which repeatedly tests whether it has been published and, if it
+has, attempts to use it in a way which leads to an immediate crash if
+initialisation is not complete.
+
+Our tool produced two suggested fixes in this case.  One of these was
+expected, consisting of two critical sections, one of which contained
+just the load of the global pointer in the consuming thread and the
+other spanning the actions of the producing thread from the point at
+which it published the structure to the point at which it finished
+initialising it. \editorial{...}  This is a correct fix.
+
+The other suggestion was an artifact of our test harness, which
+repeatedly published, initialised, unpublished, and then deinitialised
+the same structure.  SLI was able to look through this pattern, and
+determined that it was sufficient to prevent the consuming thread from
+validating the published structure at any point between the
+deinitialisation in one iteration and the initialisation in the
+subsequent one.  It therefore suggested a fix which protected the load
+which the consuming thread used to perform validation in one critical
+section and the range of the publishing thread from the
+deinitialisation to the subsequent initialisation in another,
+completely ignoring the accesses related to publishing and
+unpublishing the structure.  While somewhat surprising, this is also a
+correct fix, completely preventing the observed bug, and, as it
+produces slightly smaller critical sections, would be preferred by the
+fix prioritisation heuristic.
+
+\verb|privatise|.  This is the converse of \verb|publish|: a thread is
+attempting to make a structure private, and does it incorrectly.  It
+has already been extensively discussed in section \editorial{...},
+including a description of the fixes suggested by SLI.
+
+\verb|glibc| This is a kernel of glibc bug 2644\editorial{cite bug
+  tracker}, which affected versions of glibc from \editorial{...}  to
+\editorial{...} and could lead to a crash if multiple threads were
+shut down at the same time.  Somewhat simplified, the code looked like
+this:
+
+\begin{verbatim}
+_Unwind_ForcedUnwind() {
+    if (libgcc_s_forcedunwind == NULL)
+        pthread_cancel_init();
+    libgcc_s_forcedunwind();
+}
+
+pthread_cancel_init()
+{
+    if (done_init)
+        return;
+    libgcc_s_forcedunwind = _forcedunwind_impl;
+    done_init = 1;
+}
+\end{verbatim}
+
+Where \verb|libgcc_s_forcedunwind| and \verb|done_init| are global
+variables.  Due to compiler optimisations, the code actually executed
+was closer to this\footnote{Unfortunately, modern versions of gcc no
+  longer optimise the function in this way, and this prevented us from
+  testing the real bug.}:
+
+\begin{verbatim}
+_Unwind_ForcedUnwind() {
+1:  l = libgcc_s_forcedunwind;
+2:  if (l == NULL) {
+3:      if (done_init) {
+4:          libgcc_s_forcedunwind = l =
+                _forcedunwind_impl;
+5:          done_init = 1;
+6:      }
+7:  }
+8:  l();
+}
+\end{verbatim}
+
+Our test is then to have two threads loop executing this:
+
+\begin{verbatim}
+    while (1) {
+10:     pthread_barrier_wait();
+11:     _Unwind_ForcedUnwind();
+12:     pthread_barrier_wait();
+13:     done_init = 0;
+14:     libgcc_s_forcedunwind = NULL;
+    }
+\end{verbatim}
+
+SLI produced six suggested fixes when run on a log generated by
+running this test.
+
+The first of these had five critical sections: one covering the load
+on line 1 to the load of \verb|done_init| on line 3, and one each for
+each of the stores on lines 4, 5, 13, and 14.  The other suggestions
+were supersets of this suggestion, extending it to include various
+accesses in \verb|pthread_barrier_wait|.
+
+This illustrates two important weaknesses of the approach.  First,
+because SLI does not know anything about any operating-system.  This
+means that it cannot take advantage of any existing synchronisation
+present in the program (in this case, the \verb|pthread_barrier_wait|s
+make the critical sections protecting statements 13 and 14 redundant).
+It also means that the analysis must explore these standard functions,
+and can sometimes attempt to ``fix'' the benign races inherent in
+synchronisation operations, which is unlikely to be productive.
+
+Second, SLI can only fix the bug which it observes.  The original
+developers of this code had intended that only one thread would assign
+to \verb|libgcc_s_forcedunwind|, essentially implementing a singleton
+pattern.  The fix which SLI produces does not enforce the intended
+constraint.  It happens that in this particular case the weaker
+correctness property discovered by SLI is sufficient, but in a more
+complicated example the loss of the singleton property might be a more
+serious bug, and so SLI's fix might actually transform a fail-stop
+crashing bug into one which causes silent data corruption.  This is
+largely unavoidable without greater semantic knowledge of the
+program's intended behaviour, and is an inherent risk in any system
+which attempts to modify a program automatically without any
+programmer-provided assistance.
+
+\verb|thunderbird| is Mozilla bug number 391259\editorial{Cite bug
+  tracker?}, a simple time-of-check, time-of-use race in the IMAP
+client component of Thunderbird, an e-mail client.  The race is
+between \verb|nsImapProtocol::CloseStreams()|, which runs on the UI
+thread, and \verb|nsImapProtocol::ProcessCurrentURL()|, which runs in
+an IMAP worker thread.  The relevant parts of the program are as
+follows:
+
+\begin{verbatim}
+void nsImapProtocol::CloseStreams()
+{
+  ...
+  if (m_transport)
+  {
+      // make sure the transport closes (even if someone is still indirectly
+      // referencing it).
+      m_transport->Close(NS_ERROR_ABORT);
+      m_transport = nsnull;
+  }
+  ...
+}
+\end{verbatim}
+
+\begin{verbatim}
+PRBool nsImapProtocol::ProcessCurrentURL()
+{
+  ...
+  // disable timeouts before caching connection.
+  if (m_transport)
+    m_transport->SetTimeout(nsISocketTransport::TIMEOUT_READ_WRITE, PR_UINT32_MAX);
+  ...
+}
+\end{verbatim}
+
+If \verb|m_transport| is set to \verb|nsnull| by \verb|CloseStreams()|
+in between the two accesses in \verb|ProcessCurrentURL| then the
+program will crash.  This is essentially the same bug as
+\verb|toctou|, but embedded in a much large program.  As such, the
+final result is similar: a single suggested fix, with two critical
+sections, one containing the two accesses in \verb|ProcessCurrentURL|
+and one containing the assignment in \verb|CloseStreams|.  However,
+the process of generating a fix takes much longer: nearly eighty
+minutes, rather than a few seconds.  The vast bulk (more than 99\%) of
+this time is spent in the replay engine, reflecting the greater
+complexity of the target program and the fact that the bug simply took
+longer to reproduce, both of which lead to much larger log files.  It
+seems likely that a more intelligent replay strategy could
+significantly reduce this cost.
+
+One interesting result, illustrated in figure \editorial{...}, is that
+even though this bug took by far the longest to fix of any of the test
+cases, the time spent performing analysis was by far the smallest.
+This is because all of the other tests execute the faulty code in a
+tight loop until it crashes, which means that there are many
+non-crashing executions of the code in the log, and in particular
+there are many stores to memory locations involved in the state
+machines, and the state machines must be evaluated against all of
+these stores in order to determine the boundaries of critical sections
+outside of the crashed thread.  By contrast, the \verb|thunderbird|
+test crashed the first time the buggy code was run, and there are very
+few stores to relevant addresses.  This means that deriving these
+critical sections is very quick, and the total analysis time is very
+small.
+
+\subsection{Performance results}
+
+As can be seen from table \editorial{...} and figure \editorial{...},
+the time taken to produce a fix is generally reasonable, ranging
+between a few seconds in the simplest cases to an hour and half to
+produce suggested fixes.  The time taken by the core analysis phases
+is generally much less than this, with the remainder of the time
+taken by loading an initial snapshot of the program's memory and
+replaying the log files.
+
+\subsection{Effects of backtracking further}
+
+\editorial{Do the experiments, and then write them up.}
+
+\subsection{Complexity of generated state machines}
+
+\editorial{Write me}
 
 \section{Related work}\editorial{This is a bit of a bestiary.  Could do with a bit more analysis.}
 
@@ -1019,6 +1293,11 @@ techniques do have a number of limitations and drawbacks, we feel that
 they provide a useful basis for ongoing work to extend the set of
 situations in which they are applicable.\editorial{Wibble wibble
   wibble}
+
+\acks
+
+\editorial{The implementation makes quite heavy use of libVEX, which I
+  haven't mentioned so far.  Need to fix that somewhere.}
 
 \bibliographystyle{eurosys}
 

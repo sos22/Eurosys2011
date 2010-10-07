@@ -6,6 +6,7 @@ cd timing
 ./mk_timing_table.sh
 gnuplot ./timings.gpl
 epstopdf timings.eps 
+epstopdf without_replay.eps
 cd ..
 
-latex p3.tex
+pdflatex p3.tex
