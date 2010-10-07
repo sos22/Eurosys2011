@@ -891,21 +891,24 @@ much it costs us -- Saturday again.
 \section{Evaluation}
 
 \begin{table*}
-\begin{tabular}{llllll}
-Name of test & Nature & Number of fixes & Time taken & Size of logfile & Other name\\
- & & fixes suggested & (seconds) & (MiB) & \\
+\begin{tabular}{lllllll}
+Name of test & Nature & Number & Time taken & Size of & Number of & Number of state\\
+ & & of fixes & (seconds) & logfile & state machines & machine nodes\\
 \hline
-toctou & Synthetic simple TOCTOU & 1 & $1.18 \pm 0.02$ & 28 & race3\\
-twovar & Synthetic two-variable & 2 & $1.89 \pm 0.03$ & 31 & race7\\
-       & atomicity violation &&&&\\
-publish & Synthetic broken publish pattern & 2 & $1.15 \pm 0.02$ & 31 & race8\\
-privatize & Synthetic broken privatize pattern & 2 & $5.11 \pm 0.05$ & 43 & race9\\
+toctou & Synthetic simple & 1 & $1.18 \pm 0.02$ & 28MiB & 8 & 20\\
+       & TOCTOU & & & \\
+twovar & Synthetic two-variable & 2 & $1.89 \pm 0.03$ & 31MiB & 8 & 22\\
+       & atomicity violation &&&\\
+publish & Synthetic broken & 2 & $1.15 \pm 0.02$ & 31MiB & 5 & 16 \\
+        & publish pattern & & & \\
+privatize & Synthetic broken & 2 & $5.11 \pm 0.05$ & 43MiB & 5 & 16 \\
+          & privatize pattern & & & \\
 \hline
-glibc & Kernel of a genuine atomicity & 6 & $8.15 \pm 0.03$ & 48 & race4\\
-      & violation & & & & \\
+glibc & Kernel of a genuine & 6 & $8.15 \pm 0.03$ & 48MiB & 10 & 52\\
+      & atomicity violation & & & \\
 \hline
-thunderbird & Genuine TOCTOU & 1 & $4739 \pm 6.19$ & 758 &
-\end{tabular}\editorial{Remove the last column}
+thunderbird & Genuine TOCTOU & 1 & $4739 \pm 6.19$ & 758MiB & 6 & 14
+\end{tabular}
 \caption{Summary of results obtained from running the bug fixing
   program five times on a single log file collected from each bug.}
 \end{table*}

@@ -9,7 +9,7 @@ echo '"" "Reading initial snapshot" "Building state machines" "Generating fixes"
 echo '"" "Reading initial snapshot" "Building state machines" "Generating fixes" "Other"' > errors.time_without_replay.dat
 
 cntr=0
-for x in race3 race4 race7 race8 race9 thunderbird
+for x in toctou twovar publish privatize glibc thunderbird
 do
     for t in $x/timing.*.txt
     do
