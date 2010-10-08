@@ -9,7 +9,7 @@ epstopdf timings.eps
 epstopdf without_replay.eps
 ./build_r4.sh
 gnuplot ./r4.gpl
-epstopdf e4.eps
+epstopdf r4.eps
 cd ..
 
 pdflatex p3.tex

@@ -3,10 +3,10 @@
 histogram=timings.dat
 tmp=$(mktemp)
 
-echo '"" "Reading initial snapshot" "Constructing memory trace of crashed thread" "Building state machines" "Discovering relevant addresses" "Removing references to constant memory" "Specialising state machines" "Constructing suggested fixes"' > $histogram
-echo '"" "Reading initial snapshot" "Constructing memory trace of crashed thread" "Building state machines" "Discovering relevant addresses" "Removing references to constant memory" "Specialising state machines" "Constructing suggested fixes"' > errors.dat
+echo '"" "Reading initial snapshot" "Determining aliasing pattern for stack resolution" "Building state machines" "Discovering relevant addresses" "Collecting logs of relevant addresses" "Specialising state machines" "Constructing suggested fixes"' > $histogram
+echo '"" "Standard deviation" "Determining aliasing pattern for stack resolution" "Building state machines" "Discovering relevant addresses" "Collecting logs of relevant addresses" "Specialising state machines" "Constructing suggested fixes"' > errors.dat
 echo '"" "Reading initial snapshot" "Building state machines" "Generating fixes" "Other"' > time_without_replay
-echo '"" "Reading initial snapshot" "Building state machines" "Generating fixes" "Other"' > errors.time_without_replay.dat
+echo '"" "Standard deviation" "Building state machines" "Generating fixes" "Other"' > errors.time_without_replay.dat
 
 cntr=0
 for x in toctou twovar publish privatize glibc thunderbird
@@ -59,15 +59,15 @@ set key autotitle columnheader
 set style data histogram
 set style histogram rowstacked
 set yrange [0:1]
-set style fill pattern border -1
+set style fill solid border -1
 set boxwidth 0.75
 unset xtic
 set xtic rotate by 90 scale 0
-plot 'timings.dat' using 2:xtic(1), 'timings.dat' using 3:xtic(1), 'timings.dat' using 4:xtic(1), 'timings.dat' using 5:xtic(1),'timings.dat' using 6:xtic(1), 'timings.dat' using 7:xtic(1), 'timings.dat' using 8:xtic(1), 'errors.dat' with errorbars
+plot 'timings.dat' using 2:xtic(1) lt rgb "#eeeeee", 'timings.dat' using 3:xtic(1) lt rgb "#bbbbbb", 'timings.dat' using 4:xtic(1) lt rgb "#999999", 'timings.dat' using 5:xtic(1) lt rgb "#777777", 'timings.dat' using 6:xtic(1) lt rgb "#555555", 'timings.dat' using 7:xtic(1) lt rgb "#333333", 'timings.dat' using 8:xtic(1) lt rgb "#111111", 'errors.dat' with errorbars
 
 set output "without_replay.eps"
 set yrange [0:5]
-plot 'time_without_replay' using 2:xtic(1), 'time_without_replay' using 3:xtic(1), 'time_without_replay' using 4:xtic(1), 'errors.time_without_replay.dat' with errorbars
+plot 'time_without_replay' using 2:xtic(1) lt rgb "#eeeeee", 'time_without_replay' using 3:xtic(1) lt rgb "#aaaaaa", 'time_without_replay' using 4:xtic(1) lt "#888888", 'time_without_replay' using 5:xtic(1) lt rgb "#111111", 'errors.time_without_replay.dat' with errorbars
 EOF
 
 rm $tmp

@@ -12,7 +12,7 @@
 
 \newcommand{\editorial}[1]{\textcolor{red}{\footnote{\textcolor{red}{#1}}}}
 \newcommand{\needCite}{\editorial{need cite}}
-
+\newcommand{\smh}[1]{\editorial{SMH says: #1}}
 \begin{document}
 
 \conferenceinfo{Eurosys 2011}{date, City.} 
@@ -59,6 +59,11 @@ term1, term2
 \keywords
 keyword1, keyword2
 
+\section{To do}
+
+Need to update everything now that we specialise in several places,
+including re-running all the timing tests.
+
 \section{Introduction}
 
 There is a well-established trend in software engineering to make
@@ -78,17 +83,14 @@ once detected they remain unfixed for much longer.
 A number of techniques have been proposed for reducing the likelihood
 of these multi-threading bugs, including transactional
 memory\cite{Shavit1997} and automatic parallelization\cite{Bacon1994}.
-While extremely useful, none of these have, thus far, seen widespread
-deployment.  The reasons for this are not always entirely clear, but
-include concerns such as performance, a constrained problem domain, or
-a lack of a widely available and widely trusted implementation.  It
-seems unlikely that this situation will change in the immediate
-future, and there is therefore a need for techniques which can
-ameliorate bugs found by end-users in programs developed with the
+These can be used to address these issues in new software, but there
+remains a substantial body of existing programs using the legacy
+shared-memory model.  There is therefore a need for techniques which
+can ameliorate bugs found by end-users in programs developed with the
 currently widely-used shared memory model of concurrency.
 
 In this paper, we introduce SLI, or Speculative Lock Insertion, as one
-potential approach to this problem.  It is able to automatically fix
+potential approach to this problem.  SLI automatically fixes
 synchronisation bugs once they have been observed, given only the
 program binary and a reproduction of the bug, generating a modified
 binary whose behaviour is identical to that of the original except
@@ -110,7 +112,7 @@ the parts of the program's behaviour which are most closely relevant
 to the bug, in a process similar to program slicing\needCite{}.  These
 approximations can be used to predict whether executing a particular
 subset of a program's instructions atomically at a particular point in
-its execution would have lead to a crash, and this can then be
+its execution would have led to a crash, and this can then be
 leveraged to determine what additional synchronisation would have
 prevented the crash from happening.  This synchronisation can then be
 added to the program automatically using a simple binary rewriter, and
@@ -171,6 +173,7 @@ used to detect completely new bugs, which could then be passed to SLI
 to be automatically characterised and fixed.
 
 \section{Deriving a single-threaded explanation of the bug}
+\label{sect:build_state_machines}
 
 The first phase of our algorithm is to derive an explanation of the
 bug which considers only the behaviour of the thread which crashed.
@@ -182,62 +185,43 @@ registers.
 
 \subsection{Inaccuracies in the state machines}
 
-These machines are approximations of the program's real behaviour,
+These machines are approximations of the program's real behavior,
 exhibiting both false positive and false negative errors, and can
 predict a crash where none will actually occur or safe execution when
 a crash is possible.  It would be possible to design an algorithm
-which avoids either or both of these classes of errors; however, doing
-so would not be helpful, as it would not allow the system as a whole
-to provide any stronger guarantees.
+which avoids either or both of these classes of errors, but doing so
+would not necessarily be helpful.
 
 Consider false positives first, or errors where a state machine
 predicts a crash when none is possible.  This will cause the final fix
 to eliminate some schedules which would have been permitted with a
-perfect characterisation, and so it will not be possible to guarantee
-to only eliminate dangerous schedules.  However, making such a
-guarantee would also require that the later stages of the system could
-also guarantee to transform an arbitrary characterisation into a fix
-which did not eliminate any additional schedules.  Define a schedule
-to be a linearisation of the non-stack-local memory accesses produced
-by a program.  The schedule produced by a parallel program can then be
-regarded as one of its outputs, and determining whether a program
-adheres to a given synchronisation property is then equivalent to
-deciding a non-trivial property on the output of a Turing machine.  By
-Rice's theorem, this is incomputable.  It seems likely that precisely
-imposing a synchronisation policy is harder then checking whether a
-program already follows the policy, and so this strongly suggests that
-imposing such a policy is, in the general case, impossible.
-Eliminating all false positives would therefore be unlikely to be
-helpful.\editorial{Do I really need all of this?  More to the point,
-  is it actually correct?}
+perfect characterization, but, provided that there is always some
+schedule available (see section \ref{sect:deadlocks}), this cannot
+cause a correct program to become incorrect.  SLI can therefore
+tolerate some level of false positives in the characterization without
+producing incorrect fixes.
 
 Likewise, the effect of a false negative is to only partially resolve
-a bug, so that some possible manifestations remain possible.  Provided
-the approximation is sufficiently accurate that it predicts the
-observed execution to crash, none of the unfixed manifestations will
-have been observed in the crashing execution, and so guaranteeing to
-fix them would require extensive static analysis of the original
-binary.  Even determining whether a given instruction can be executed
-is incomputable in the general case, and so this kind of analysis
-seems to be far too much to hope for, and so eliminating false
-negatives in the characterisation would not actually eliminate any
-potential errors in the generated fixes.
+a bug, so that some possible manifestations remain possible.  This is
+indistinguishable from there simply being several bugs, and so,
+provided that the characterization is sufficiently accurate to predict
+a crash for the captured execution, false negatives do not prevent SLI
+from fulfilling its goal of fixing the observed crash.
 
-As such, a perfect characterisation is not only difficult, but also
+As such, a perfect characterization is not only difficult, but also
 unhelpful, and we do not attempt to produce one.  This allows us to
 use much simpler analyses and to produce much simpler
-characterisations, which makes it more likely that the system will be
-able to generate a correct fix.\editorial{Not sure I've really argued
-  that very convincingingly, but nevermind.}
+characterizations, which makes it more likely that the system will be
+able to generate a correct fix.
 
-When we do make approximations in the characterisation, we attempt, as
+When we do make approximations in the characterization, we attempt, as
 far as possible, to ensure that the captured execution remains
 possible, and apply coarser approximation to executions which are very
 different from the captured one.  The intuition behind this is that
 the captured execution is the only one which is known to be relevant
 to the bug, while all of the other paths discovered by static analysis
 are in some sense speculative: we do now know if they can ever happen
-at all, much less if they are relevant to the observed behaviour.  It
+at all, much less if they are relevant to the observed behavior.  It
 therefore makes sense that, when an approximation must be made in
 order to reduce execution time, or simply to make an analysis
 feasible, it should be made on these speculative paths.
@@ -531,33 +515,39 @@ derived in the same way as before, producing an identical answer.
 
 \section{Investigating the multi-threaded behaviour of the program}
 
-Once a single-threaded characterisation of the bug has been produced,
+Once a single-threaded characterization of the bug has been produced,
 it is possible to investigate the crashed thread's interactions with
 other threads in the system.  Our basic approach here is to replay the
 program's execution and discover points at which the state machine
 would have returned \verb|no-crash| if it had executed atomically.
 From these, it is possible to infer which parts of the program's
-execution should be synchronised against each other, and hence to
-suggest some potentially useful synchronisations.  In principle, this
+execution should be synchronized against each other, and hence to
+suggest some potentially useful synchronizations.  In principle, this
 stage can run immediately as soon as the first state machine has been
 derived, but it is possible to derive a significant performance
 advantage by grouping machines into small batches and hence reducing
 the number of times which the log file has to be
 replayed.\editorial{Evidence?  Also, so what?}
 
+\editorial{Relevant address bits?}
+
 The first stage is to find the last point in the captured execution at
-which the state machine could have been evalated (i.e. the last point
+which the state machine could have been evaluated (i.e. the last point
 at which the crashed thread's instruction and call stack match those
 for which the state machine was derived).  We use the values of the
-crashed thread's registers to specialise the state machine to this
-point (we cannot do this earlier as that would break the backtracking
-algorithm), so that it only depends on the content of memory.  The
-state machine is then evaluated to determine which addresses it
-accesses, and the captured log replayed evaluating the expression as
-if atomically whenever one of these addresses changes.  This allows us
-to classify the various possible states of the actual global memory as
-either crash-prone or safe, such that evaluating the state machine
-atomically in a safe state would not have led to a crash.
+crashed thread's registers and stack to specialize the state machine
+to this point (we cannot do this earlier as that would break the
+backtracking algorithm), so that it only depends on the content of
+shared memory.  The state machine is then evaluated to determine which
+addresses it accesses, and the captured log replayed evaluating the
+expression as if atomically whenever one of these addresses changes.
+This allows us to classify the various possible states of the actual
+global memory as either crash-prone or safe, such that evaluating the
+state machine atomically in a safe state would not have led to a
+crash.\editorial{Not convinced that that's terribly clear.}
+
+\subsection{Generating candidate fixes}
+\label{sect:gen_fix}
 
 At the end of this stage, we have, for each state machine:
 
@@ -808,6 +798,7 @@ otherwise.\editorial{Discussion of how often these things actually
   work?}
 
 \section{Deadlocks}
+\label{sect:deadlocks}
 
 There is a risk that introducing additional synchronisation into the
 program will itself introduce a deadlock.  We mitigate the issue
@@ -895,8 +886,8 @@ much it costs us -- Saturday again.
 
 \begin{table*}
 \begin{tabular}{lllllll}
-Name of test & Nature & Number & Time taken & Size of & Number of & Number of state\\
- & & of fixes & (seconds) & logfile & state machines & machine nodes\\
+Name of test & Nature & Number & Time taken & Size of & Number of & Total number of state\\
+ & & of fixes & (seconds) & logfile & state machines & machine states\\
 \hline
 toctou & Synthetic simple & 1 & $1.18 \pm 0.02$ & 28MiB & 8 & 20\\
        & TOCTOU & & & \\
@@ -910,20 +901,88 @@ privatize & Synthetic broken & 2 & $5.11 \pm 0.05$ & 43MiB & 5 & 16 \\
 glibc & Kernel of a genuine & 6 & $8.15 \pm 0.03$ & 48MiB & 10 & 52\\
       & atomicity violation & & & \\
 \hline
-thunderbird & Genuine TOCTOU & 1 & $4739 \pm 6.19$ & 758MiB & 6 & 14
+thunderbird & Genuine TOCTOU & 1 & $4740 \pm 6$ & 758MiB & 6 & 14
 \end{tabular}
-\caption{Summary of results obtained from running the bug fixing
-  program five times on a single log file collected from each bug.}
+\caption{Summary of results obtained from running the fix generating
+  tool on a single log file collected from each bug.  Timing
+  information is mean and standard deviation from five runs.}
 \label{tab:perf_summary}
 \end{table*}
+
+As shown in table \ref{tab:perf_summary}, our prototype implementation
+is able to fix a reasonable selection of artificial bugs within a few
+seconds, given only the program binary and a log of the bug
+reproducing, and is able to fix at least one real-world bug within an
+hour and a half.  This data also shows that the prototype avoids state
+machine explosion, generating only a small number of distinct state
+machines, each of which has only a small number of states (a little
+over three on average, and in no case more than fourteen).
+Furthermore, this time is dominated by the time spent replaying the
+collected log files (especially for the most realistic bug,
+\verb|thunderbird|), suggesting that improvements to our presently
+very na\"ive replay engine would yield significant overall performance
+gains.
 
 \begin{figure*}
 \includegraphics{timing/timings.pdf}
 \caption{Breakdown of how long the various phases take, as fractions
   of the entire fix-generating process.  Mean and standard deviation
-  from five runs on a single log file.}
+  from five runs on a single log file for each bug.}
 \label{fig:phasedistribution}
 \end{figure*}
+
+Figure \ref{fig:phasedistribution} shows how the time taken is
+distributed between the phases of the fix generation process.  These
+phases are, in brief:
+
+\begin{itemize}
+\item Reading an initial snapshot of the program's memory.  For most
+  of these tests, this snapshot is the program's initial state,
+  immediately after it is created by the kernel.  For
+  \verb|thunderbird|, the snapshot was taken after the test program
+  had completed its initialization phase, so as to reduce the size of
+  the generated log file.
+\item Determining the aliasing pattern for stack resolution.  This
+  involves walking over the log file, recording all of the stack
+  accesses by the crashed thread and using this to determine which
+  stores provide data for which loads.  This is used as input to the
+  local stack resolution heuristic, described in section
+  \ref{sect:resolvestack}.
+\item Building the initial state machines, using the backtracking
+  algorithm described in section \ref{sect:build_state_machines}.
+\item Determining which memory locations are potentially relevant to
+  the state machines.  This involves replaying the log again and
+  evaluating the machines wherever possible, recording which concrete
+  memory locations it depends on.
+\item Collecting logs of all of the stores to potentially relevant
+  addresses.  This amounts to replaying the log once again and
+  recording every configuration of values in relevant locations which
+  is observed, along with the stores which cause the machine to enter
+  and leave that configuration.\editorial{Reference earlier sections}
+  Some of the referenced addresses may turn out to be constant, and in
+  that case we substitute that constant value in place of the load
+  expression in the state machine.
+\item Specializing the state machines from one which can be evaluated
+  at any dynamic instance of a particular instruction to one which is
+  only valid at some specific dynamic instance.  Selecting the
+  appropriate point at which to perform specialization requires the
+  log to be replayed once more.\editorial{Reference earlier sections}
+\item Finally, this specialized state machine can be combined with the
+  relevant address logs to produce a set of potential fixes, using the
+  algorithm described in section \ref{sect:gen_fix}.
+\end{itemize}\editorial{This doesn't really belong here; maybe move into one of the implementation sections.}
+
+Two main observations can be drawn from the figure.  First,
+constructing the state machines is very quick for all of these tests,
+and is barely visible in the graph.  This is reassuring, and suggests
+that the algorithm is able to discard parts of the program's execution
+which are not relevant to the observed crash quickly, so should be
+able to scale up to more complicated bugs in a reasonably
+straightforward way\editorial{Not sure I believe that}.  Second, for
+the very long-running \verb|thunderbird| test the runtime is
+completely dominated by the phases which involve replaying the log.
+This is unsurprising, as it has by far the largest logfile, reflecting
+the greater complexity of the buggy program.
 
 \begin{figure*}
 \includegraphics{timing/without_replay.pdf}
@@ -932,6 +991,10 @@ thunderbird & Genuine TOCTOU & 1 & $4739 \pm 6.19$ & 758MiB & 6 & 14
   a single log file for each bug.}
 \label{fig:timesignoringreplay}
 \end{figure*}
+
+Figure \ref{fig:timesignoringreplay} shows how much time is taken by
+the various phases ignoring the time taken to replay the log file.
+
 
 \begin{figure*}
 \includegraphics{timing/r4.pdf}
@@ -951,7 +1014,7 @@ the crashed thread.  For implementation reasons, our prototype will
 always backtrack to a branch instruction, and for the purposes of this
 evaluation we limited this backtracking to ten branches.  We
 investigate the effect of changing this parameter in section
-\ref{sect:eval:backtrack}.
+\ref{sect:eval:backtrack}.\editorial{Moo}
 
 \subsection{Description of test bugs}
 
@@ -968,6 +1031,25 @@ thread.  This is a correct and minimal fix.
 there are two global variables, and one thread loops setting both to
 five and then setting both to seven while another thread loops loading
 both and asserting them to be equal.
+
+Suggested fixes:
+
+\begin{verbatim}
+Suggested atomic block: 0 unknown, 4878 bad, 2323 good, local [{40032f;401eed;425739;}2:4002f5], remote {[{40a1a1;4001f9;}1:40035b], [{40a1a1;4001f9;}1:40036f], [{40a1a1;4001f9;}1:40036f, {40a1a1;4001f9;}1:40035b]}
+Suggested atomic block: 0 unknown, 4217 bad, 2984 good, local [{40032f;401eed;425739;}2:4002f5, {40032f;401eed;425739;}2:4002ec], remote {[{40a1a1;4001f9;}1:400351], [{40a1a1;4001f9;}1:40035b], [{40a1a1;4001f9;}1:400365], [{40a1a1;4001f9;}1:40036f], [{40a1a1;4001f9;}1:400351, {40a1a1;4001f9;}1:40035b], [{40a1a1;4001f9;}1:400365, {40a1a1;4001f9;}1:40036f]}
+\end{verbatim}
+
+2ec -- load of first variable
+2f5 -- load of second variable
+351 -- first store of first variable
+35b -- first store of second variable
+365 -- second store of first variable
+36f -- second store of second variable
+
+So the first fix is actually wrong.  Damn.
+
+Multi-specialization seems to eliminate it, though.
+
 
 \verb|publish|, a broken implementation of the publish pattern.  In
 this pattern, a structure is initialised by one thread and then
@@ -1005,7 +1087,8 @@ completely ignoring the accesses related to publishing and
 unpublishing the structure.  While somewhat surprising, this is also a
 correct fix, completely preventing the observed bug, and, as it
 produces slightly smaller critical sections, would be preferred by the
-fix prioritisation heuristic.
+fix prioritisation heuristic.\smh{good example of a bad fix which is
+  actually good.}
 
 \verb|privatise|.  This is the converse of \verb|publish|: a thread is
 attempting to make a structure private, and does it incorrectly.  It
@@ -1036,10 +1119,11 @@ pthread_cancel_init()
 \end{verbatim}
 
 Where \verb|libgcc_s_forcedunwind| and \verb|done_init| are global
-variables.  Due to compiler optimisations, the code actually executed
-was closer to this\footnote{Unfortunately, modern versions of gcc no
-  longer optimise the function in this way, and this prevented us from
-  testing the real bug.}:
+variables.  The compiler's optimizer transformed this such that the
+code actually executed corresponded to\footnote{Unfortunately, only
+  the 32-bit x86 version of gcc optimizes the function like this, and
+  our implementation of SLI assumes a 64-bit x86 program, and this
+  prevented us from testing with the real bug.}:
 
 \begin{verbatim}
 _Unwind_ForcedUnwind() {
@@ -1077,12 +1161,12 @@ were supersets of this suggestion, extending it to include various
 accesses in \verb|pthread_barrier_wait|.
 
 This illustrates two important weaknesses of the approach.  First,
-because SLI does not know anything about any operating-system.  This
-means that it cannot take advantage of any existing synchronisation
-present in the program (in this case, the \verb|pthread_barrier_wait|s
-make the critical sections protecting statements 13 and 14 redundant).
-It also means that the analysis must explore these standard functions,
-and can sometimes attempt to ``fix'' the benign races inherent in
+because SLI does not know anything about any operating-system, it
+cannot take advantage of any existing synchronisation present in the
+program (in this case, the \verb|pthread_barrier_wait|s make the
+critical sections protecting statements 13 and 14 redundant).  It also
+means that the analysis must explore these standard functions, and can
+sometimes attempt to ``fix'' the benign races inherent in
 synchronisation operations, which is unlikely to be productive.
 
 Second, SLI can only fix the bug which it observes.  The original
@@ -1322,7 +1406,7 @@ situations in which they are applicable.\editorial{Wibble wibble
 
 \bibliographystyle{eurosys}
 
-\bibliography{eurosys-sample-bib}    
+\bibliography{$HOME/mendeley.bib/library}
 
 \end{document}
 
