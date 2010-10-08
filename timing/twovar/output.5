@@ -1,0 +1,195 @@
+Read 0M
+Read 1M
+Read 2M
+Read 3M
+Read 4M
+Read 5M
+Read 6M
+Read 7M
+Read 8M
+Read 9M
+Read 10M
+Read 11M
+Read 12M
+Read 13M
+Read 14M
+Read 15M
+Read 16M
+Read 17M
+Read 18M
+Read 18M
+WARNING: sys_rt_sigprocmask not correctly handled
+Unknown clean call amd64g_create_fpucw
+Unknown clean call amd64g_check_fldcw
+Read 19M
+Read 19M
+Read 20M
+Read 21M
+Read 22M
+Read 23M
+Read 24M
+Read 25M
+Read 26M
+Read 27M
+Clone created thread 2 from 1
+Read 28M
+Read 28M
+Read 29M
+Read 29M
+Read 30M
+Read 31M
+Done replay, counter 67722
+Selected thread 2 as crasher
+Crashed because we jumped at a bad RIP 40a760
+Proximal cause is <40031a> leaf{(BadAddr 0x40a760)}
+Before dropping late stores <40031a> leaf{(BadAddr 0x40a760)}
+CMN for {40032f;401eed;425739;}2:400315 is <40031a> leaf{(BadAddr 0x40a760)}
+Before dropping late stores <40031a> leaf{(BadAddr 0x40a760)}
+CMN for {40032f;401eed;425739;}2:400310 is <40031a> leaf{(BadAddr 0x40a760)}
+Before dropping late stores <40031a> leaf{(BadAddr 0x40a760)}
+CMN for {40032f;401eed;425739;}2:40030b is <40031a> leaf{(BadAddr 0x40a760)}
+Before dropping late stores <40031a> leaf{(BadAddr 0x40a760)}
+CMN for {40032f;401eed;425739;}2:400306 is <40031a> leaf{(BadAddr 0x40a760)}
+Ret target is 40032f
+Before dropping late stores <400304> branch{(Not conditions(0x4, r128, r136, r144, r152)), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+CMN for {40032f;401eed;425739;}2:400304 is <400304> branch{(Not conditions(0x4, r128, r136, r144, r152)), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Before dropping late stores <400304> branch{(Not Equal(r0, (load Add(0xfffffffffffffff8, r40) at {40032f;401eed;425739;}2:400301))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+CMN for {40032f;401eed;425739;}2:400301 is <400304> branch{(Not Equal(r0, (load Add(0xfffffffffffffff8, r40) at {40032f;401eed;425739;}2:400301))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Before dropping late stores <400304> branch{(Not Equal((load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe), (load Add(0xfffffffffffffff8, r40) at {40032f;401eed;425739;}2:400301))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+CMN for {40032f;401eed;425739;}2:4002fe is <400304> branch{(Not Equal((load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe), (load Add(0xfffffffffffffff8, r40) at {40032f;401eed;425739;}2:400301))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Before dropping late stores <400304> branch{(Not Equal(r0, (load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+CMN for {40032f;401eed;425739;}2:4002fb is <400304> branch{(Not Equal(r0, (load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Before dropping late stores <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+CMN for {40032f;401eed;425739;}2:4002f5 is <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Before dropping late stores <400304> branch{(Not Equal(r0, (load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+CMN for {40032f;401eed;425739;}2:4002f2 is <400304> branch{(Not Equal(r0, (load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Before dropping late stores <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+CMN for {40032f;401eed;425739;}2:4002ec is <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Before dropping late stores <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+CMN for {40032f;401eed;425739;}2:4002e8 is <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Before dropping late stores <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+CMN for {40032f;401eed;425739;}2:4002e5 is <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Before dropping late stores <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+CMN for {40032f;401eed;425739;}2:4002e4 is <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Before dropping late stores <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+CMN for {401eed;425739;}2:40032a is <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Before dropping late stores <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+CMN for {401eed;425739;}2:400325 is <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Ret target is 40032f
+Before dropping late stores <40032f> leaf{0x0}
+CMN for {40032f;401eed;425739;}2:400320 is <40032f> leaf{0x0}
+Before dropping late stores <40032f> leaf{0x0}
+CMN for {40032f;401eed;425739;}2:40031f is <40032f> leaf{0x0}
+Keep {40032f;401eed;425739;}2:40031f (<40032f> leaf{0x0}) at 0x7fb687f407f8
+Keep {40032f;401eed;425739;}2:4002e4 (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f3b4d8
+Keep {40032f;401eed;425739;}2:400301 (<400304> branch{(Not Equal(r0, (load Add(0xfffffffffffffff8, r40) at {40032f;401eed;425739;}2:400301))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f16118
+Keep {40032f;401eed;425739;}2:4002e8 (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f340b8
+Keep {40032f;401eed;425739;}2:4002ec (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f2d338
+Drop {}2:425739 (<425739> leaf{0x0}); duplicates 0x7fb687f407f8
+Keep {40032f;401eed;425739;}2:400315 (<40031a> leaf{(BadAddr 0x40a760)}) at 0x7fb687f08e98
+Keep {40032f;401eed;425739;}2:400304 (<400304> branch{(Not conditions(0x4, r128, r136, r144, r152)), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f11d58
+Drop {40032f;401eed;425739;}2:400310 (<40031a> leaf{(BadAddr 0x40a760)}); duplicates 0x7fb687f08e98
+Keep {40032f;401eed;425739;}2:4002f2 (<400304> branch{(Not Equal(r0, (load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f275f8
+Keep {401eed;425739;}2:40032a (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f3d998
+Drop {40032f;401eed;425739;}2:400320 (<40032f> leaf{0x0}); duplicates 0x7fb687f407f8
+Keep {40032f;401eed;425739;}2:4002fe (<400304> branch{(Not Equal((load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe), (load Add(0xfffffffffffffff8, r40) at {40032f;401eed;425739;}2:400301))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f1a0b8
+Drop {40032f;401eed;425739;}2:400306 (<40031a> leaf{(BadAddr 0x40a760)}); duplicates 0x7fb687f08e98
+Drop {401eed;425739;}2:400325 (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}); duplicates 0x7fb687f3d998
+Keep {40032f;401eed;425739;}2:4002fb (<400304> branch{(Not Equal(r0, (load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f1dd98
+Drop {40032f;401eed;425739;}2:40031a (<40031a> leaf{(BadAddr 0x40a760)}); duplicates 0x7fb687f08e98
+Drop {425739;}2:401eed (<401eed> leaf{0x0}); duplicates 0x7fb687f407f8
+Drop {40032f;401eed;425739;}2:4002e5 (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}); duplicates 0x7fb687f340b8
+Drop {40032f;401eed;425739;}2:40030b (<40031a> leaf{(BadAddr 0x40a760)}); duplicates 0x7fb687f08e98
+Drop {401eed;425739;}2:40032f (<40032f> leaf{0x0}); duplicates 0x7fb687f407f8
+Keep {40032f;401eed;425739;}2:4002f5 (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f22b38
+CM de-duplication kept 12 nodes and dropped 10
+Read 28M
+Read 28M
+Read 29M
+Read 29M
+Read 30M
+Read 31M
+Done replay, counter 46863
+CMN {40032f;401eed;425739;}2:40031f 40031f -> <40032f> leaf{0x0} 
+CMN {40032f;401eed;425739;}2:4002e4 4002e4 -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}} 6a7c74 6a7c78 
+CMN {40032f;401eed;425739;}2:400301 400301 -> <400304> branch{(Not Equal(r0, (load Add(0xfffffffffffffff8, r40) at {40032f;401eed;425739;}2:400301))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}} 4ffff88 
+CMN {40032f;401eed;425739;}2:4002e8 4002e8 -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}} 6a7c74 6a7c78 
+CMN {40032f;401eed;425739;}2:4002ec 4002ec -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}} 6a7c74 6a7c78 
+CMN {40032f;401eed;425739;}2:400315 400315 -> <40031a> leaf{(BadAddr 0x40a760)} 
+CMN {40032f;401eed;425739;}2:400304 400304 -> <400304> branch{(Not conditions(0x4, r128, r136, r144, r152)), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}} 
+CMN {40032f;401eed;425739;}2:4002f2 4002f2 -> <400304> branch{(Not Equal(r0, (load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}} 6a7c74 
+CMN {401eed;425739;}2:40032a 40032a -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}} 6a7c74 6a7c78 
+CMN {40032f;401eed;425739;}2:4002fe 4002fe -> <400304> branch{(Not Equal((load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe), (load Add(0xfffffffffffffff8, r40) at {40032f;401eed;425739;}2:400301))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}} 4ffff88 4ffff8c 
+CMN {40032f;401eed;425739;}2:4002fb 4002fb -> <400304> branch{(Not Equal(r0, (load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}} 4ffff8c 
+CMN {40032f;401eed;425739;}2:4002f5 4002f5 -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}} 4ffff8c 6a7c74 
+Interesting addresses:
+6a7c74
+6a7c78
+4ffff88
+4ffff8c
+Read 28M
+Read 28M
+Read 29M
+Read 29M
+Read 30M
+Read 31M
+Done replay, counter 46863
+Keep {40032f;401eed;425739;}2:40031f (<40032f> leaf{0x0}) at 0x7fb687f407f8
+Keep {40032f;401eed;425739;}2:4002e4 (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f3b4d8
+Keep {40032f;401eed;425739;}2:400301 (<400304> branch{(Not Equal(r0, (load Add(0xfffffffffffffff8, r40) at {40032f;401eed;425739;}2:400301))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f16118
+Keep {40032f;401eed;425739;}2:4002e8 (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f340b8
+Keep {40032f;401eed;425739;}2:4002ec (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f2d338
+Keep {40032f;401eed;425739;}2:400315 (<40031a> leaf{(BadAddr 0x40a760)}) at 0x7fb687f08e98
+Keep {40032f;401eed;425739;}2:400304 (<400304> branch{(Not conditions(0x4, r128, r136, r144, r152)), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f11d58
+Keep {40032f;401eed;425739;}2:4002f2 (<400304> branch{(Not Equal(r0, (load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f275f8
+Keep {401eed;425739;}2:40032a (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f3d998
+Keep {40032f;401eed;425739;}2:4002fe (<400304> branch{(Not Equal((load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe), (load Add(0xfffffffffffffff8, r40) at {40032f;401eed;425739;}2:400301))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f1a0b8
+Keep {40032f;401eed;425739;}2:4002fb (<400304> branch{(Not Equal(r0, (load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f1dd98
+Keep {40032f;401eed;425739;}2:4002f5 (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb687f22b38
+CM de-duplication kept 12 nodes and dropped 0
+Pre-fold {40032f;401eed;425739;}2:40031f -> <40032f> leaf{0x0}
+Pre-fold {40032f;401eed;425739;}2:4002e4 -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Pre-fold {40032f;401eed;425739;}2:400301 -> <400304> branch{(Not Equal(r0, (load Add(0xfffffffffffffff8, r40) at {40032f;401eed;425739;}2:400301))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Pre-fold {40032f;401eed;425739;}2:4002e8 -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Pre-fold {40032f;401eed;425739;}2:4002ec -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Pre-fold {40032f;401eed;425739;}2:400315 -> <40031a> leaf{(BadAddr 0x40a760)}
+Pre-fold {40032f;401eed;425739;}2:400304 -> <400304> branch{(Not conditions(0x4, r128, r136, r144, r152)), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Pre-fold {40032f;401eed;425739;}2:4002f2 -> <400304> branch{(Not Equal(r0, (load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Pre-fold {401eed;425739;}2:40032a -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Pre-fold {40032f;401eed;425739;}2:4002fe -> <400304> branch{(Not Equal((load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe), (load Add(0xfffffffffffffff8, r40) at {40032f;401eed;425739;}2:400301))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Pre-fold {40032f;401eed;425739;}2:4002fb -> <400304> branch{(Not Equal(r0, (load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Pre-fold {40032f;401eed;425739;}2:4002f5 -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load Add(0xfffffffffffffffc, r40) at {40032f;401eed;425739;}2:4002fe))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Read 28M
+Read 28M
+Read 29M
+Read 29M
+Read 30M
+Read 31M
+Done replay, counter 46863
+Post-fold {40032f;401eed;425739;}2:40031f -> <40032f> leaf{0x0}
+Post-fold {40032f;401eed;425739;}2:4002e4 -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Post-fold {40032f;401eed;425739;}2:400301 -> <400304> branch{0x1, <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Post-fold {40032f;401eed;425739;}2:4002e8 -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Post-fold {40032f;401eed;425739;}2:4002ec -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Post-fold {40032f;401eed;425739;}2:400315 -> <40031a> leaf{(BadAddr 0x40a760)}
+Post-fold {40032f;401eed;425739;}2:400304 -> <400304> branch{0x1, <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Post-fold {40032f;401eed;425739;}2:4002f2 -> <400304> branch{(Not Equal(0x5, (load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Post-fold {401eed;425739;}2:40032a -> <400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Post-fold {40032f;401eed;425739;}2:4002fe -> <400304> branch{0x1, <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Post-fold {40032f;401eed;425739;}2:4002fb -> <400304> branch{0x1, <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Post-fold {40032f;401eed;425739;}2:4002f5 -> <400304> branch{(Not Equal(0x4ffffa000000005, (load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}
+Keep {40032f;401eed;425739;}2:40031f (<40032f> leaf{0x0}) at 0x7fb683608518
+Keep {40032f;401eed;425739;}2:4002e4 (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb6836883b8
+Keep {40032f;401eed;425739;}2:400301 (<400304> branch{0x1, <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb68368bb38
+Keep {40032f;401eed;425739;}2:4002e8 (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb6836889b8
+Drop {40032f;401eed;425739;}2:4002ec (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}); duplicates 0x7fb6836889b8
+Keep {40032f;401eed;425739;}2:400315 (<40031a> leaf{(BadAddr 0x40a760)}) at 0x7fb68368e5d8
+Drop {40032f;401eed;425739;}2:400304 (<400304> branch{0x1, <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}); duplicates 0x7fb68368bb38
+Keep {40032f;401eed;425739;}2:4002f2 (<400304> branch{(Not Equal(0x5, (load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb683689438
+Keep {401eed;425739;}2:40032a (<400304> branch{(Not Equal((load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5), (load 0x6a7c78 at {40032f;401eed;425739;}2:4002ec))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb683609038
+Drop {40032f;401eed;425739;}2:4002fe (<400304> branch{0x1, <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}); duplicates 0x7fb68368bb38
+Drop {40032f;401eed;425739;}2:4002fb (<400304> branch{0x1, <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}); duplicates 0x7fb68368bb38
+Keep {40032f;401eed;425739;}2:4002f5 (<400304> branch{(Not Equal(0x4ffffa000000005, (load 0x6a7c74 at {40032f;401eed;425739;}2:4002f5))), <40031a> leaf{(BadAddr 0x40a760)}, <40032f> leaf{0x0}}) at 0x7fb683689cd8
+CM de-duplication kept 8 nodes and dropped 4
+Suggested atomic block: 0 unknown, 4878 bad, 2323 good, local [{40032f;401eed;425739;}2:4002f5], remote {[{40a1a1;4001f9;}1:40035b], [{40a1a1;4001f9;}1:40036f], [{40a1a1;4001f9;}1:40036f, {40a1a1;4001f9;}1:40035b]}
+Suggested atomic block: 0 unknown, 4217 bad, 2984 good, local [{40032f;401eed;425739;}2:4002f5, {40032f;401eed;425739;}2:4002ec], remote {[{40a1a1;4001f9;}1:400351], [{40a1a1;4001f9;}1:40035b], [{40a1a1;4001f9;}1:400365], [{40a1a1;4001f9;}1:40036f], [{40a1a1;4001f9;}1:400351, {40a1a1;4001f9;}1:40035b], [{40a1a1;4001f9;}1:400365, {40a1a1;4001f9;}1:40036f]}

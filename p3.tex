@@ -343,16 +343,14 @@ fix.\editorial{...}
 
 The next step is to reduce the CFG to an acyclic approximation of
 itself, in effect assuming that loops are executed at most once.  This
-assumption is, of course, unsound\editorial{This is probably the most
-  unsound step in the whole thing, actually.}, and will in the
-majority of cases be false, but is sufficient to provide us with a
-representative sketch of the program's behaviour, and hence to produce
-reasonable fixes.  We choose edges to remove based on two heuristics.
-First, we try not to remove any edges which are represented in the
-captured execution.  Second, we try not to partition the graph, which
-minimises the number of paths which are discarded.  This ensures that
-the DAG is at least plausible, even when it is not completely
-accurate.\editorial{...}
+assumption is, of course, unsound, and will in the majority of cases
+be false, but is sufficient to provide us with a representative sketch
+of the program's behaviour, and hence to produce reasonable fixes.  We
+choose edges to remove based on two heuristics.  First, we try not to
+remove any edges which are represented in the captured execution.
+Second, we try not to partition the graph, which minimises the number
+of paths which are discarded.  This ensures that the DAG is at least
+plausible, even when it is not completely accurate.\editorial{...}
 
 The result of this is a DAG of instructions, rooted at the untaken
 target of the original branch instruction whose leaves already have
@@ -406,48 +404,46 @@ single time.  These simple instructions themselves issue at most one
 load, and so the ambiguity is avoided.
 
 The state machines must also model the effects of stores.  To do this,
-each edge in the machine has a list of <address, value, size>
-tuples\editorial{Actually, I didn't bother with the size part.}, where
-address and value can be arbitrary expressions, indicating what stores
-the program will issue when it follows that edge.  Backtracking across
-a store instruction is then a simple matter of adding another entry to
-this list.\editorial{That doesn't actually make sense, but it sounds
-  kind of plausible on a first pass, so maybe I'll get away with it.}
-Unfortunately, the lists of stores associated with an edge in the
-state machine can become quite large for even modest test cases, and
-the vast majority of these stores will never be used.  We therefore
-ignore stores which occur more than a certain distance from the point
-for which the state machine is being derived, which both reduces the
-number of stores which have to be recorded and, more importantly,
-allows many nodes in the CFG to be merged; see section \editorial{...}
-for a discussion on the effects this has upon performance and
-correctness.
+each edge in the machine has a list of <address, value, size> tuples,
+where address and value can be arbitrary expressions, indicating what
+stores the program will issue when it follows that edge.  Backtracking
+across a store instruction is then a simple matter of adding another
+entry to this list.  Unfortunately, the lists of stores associated
+with an edge in the state machine can become quite large for even
+modest test cases, and the vast majority of these stores will never be
+used.  We therefore ignore stores which occur more than a certain
+distance from the point for which the state machine is being derived,
+which both reduces the number of stores which have to be recorded and,
+more importantly, allows many nodes in the CFG to be merged; see
+section \ref{sect:validassumpt} for a discussion on the effects this
+has upon performance and correctness.
 
 \subsubsection{Resolving accesses to the thread's local stack}
+\label{sect:resolvestack}
 
 Many load instructions will access a thread's local stack.  While it
 is, in principle, possible for one of these accesses to be involved in
 a concurrency bug, it is in practise highly unlikely, as it is unusual
 for one thread to access another's stack (see section
-\editorial{...}).  It is therefore useful to be able to resolve these
-loads, by finding the instruction which produced the data which is
-loaded, without performing more expensive analysis steps.  We use a
-simple heuristic in order to do this.  When we encounter a store
-instruction, we check if the instruction occurred in the captured
-execution.  If it did, and if it stored to the stack in that case, we
-check through the log to determine which instructions subsequently
-loaded the stored value.  We then check if any of those loads appear
-in the current state machine, and, if they do, we assume that they
-will always load the value stored by the current instruction.  This
-allows the load to be eliminated, simplifying the machines.  This is
-obviously an unsound heuristic, and will occasionally produce
-incorrect predictions, which will lead to an incorrect
-characterisation of the program's behaviour; see section
-\editorial{...}  for a discussion of the effects of these errors upon
-the final result, and an estimate of the frequency of these
-errors.\editorial{Whole paragraph would benefit from rewriting.}
+\ref{sect:validassumpt}).  It is therefore useful to be able to
+resolve these loads, by finding the instruction which produced the
+data which is loaded, without performing more expensive analysis
+steps.  We use a simple heuristic in order to do this.  When we
+encounter a store instruction, we check if the instruction occurred in
+the captured execution.  If it did, and if it stored to the stack in
+that case, we check through the log to determine which instructions
+subsequently loaded the stored value.  We then check if any of those
+loads appear in the current state machine, and, if they do, we assume
+that they will always load the value stored by the current
+instruction.  This allows the load to be eliminated, simplifying the
+machines.  This is obviously an unsound heuristic, and will
+occasionally produce incorrect predictions, which will lead to an
+incorrect characterisation of the program's behaviour; see section
+\ref{sect:validassumpt} for a discussion of the effects of these
+errors upon the final result, and an estimate of the frequency of
+these errors.\editorial{Whole paragraph would benefit from rewriting.}
 
-\subsubsection{Example}
+\subsubsection{Example}\editorial{Re-do this as an inline running example.}
 
 As an example, consider this simple program in x86 assembly language:
 
@@ -592,24 +588,25 @@ sections as follows:
 
 Unsafe regions which cross threads cannot be protected in this way,
 and we ignore them during fix generation, and penalise the resulting
-fix when selecting which fix to actually apply (see
-section\editorial{...}).
+fix when selecting which fix to actually apply (see section
+\ref{sect:selecyfix}).
 
 Our fix then consists of ensuring that the first critical section
 cannot execute at the same time as any of the second two kinds.  In
 our current implementation, this is done by introducing a new global
 lock which is acquired before the first instruction of any of these
 critical sections and then released after the last one (see section
-\editorial{...} for more details).  This is moderately pessimistic, as
-it prohibits multiple threads from running sections of the first type
-in parallel and prohibits sections of the second and third type from
-running in parallel with each other, which would have been allowed by
-the intended fix.  We made this choice purely in order to simplify the
-implementation; a more intelligent implementation could retain greater
-concurrency, which might lead to lower overhead, at the expense of
-slightly greater implementation complexity.
+\ref{sect:binpatch} for more details).  This is moderately
+pessimistic, as it prohibits multiple threads from running sections of
+the first type in parallel and prohibits sections of the second and
+third type from running in parallel with each other, which would have
+been allowed by the intended fix.  We made this choice purely in order
+to simplify the implementation; a more intelligent implementation
+could retain greater concurrency, which might lead to lower overhead,
+at the expense of slightly greater implementation complexity.
 
 \subsection{Selecting a fix}
+\label{sect:selectfix}
 
 This process might produce multiple possible fixes if multiple state
 machines are available, and it is then necessary to select an
@@ -631,6 +628,7 @@ pathological performance, and so the exact choice of prioritisation
 heuristic does not appear to be critical.
 
 \subsection{Example}
+\label{sect:ex_privatise}
 
 Thread 1:
 
@@ -751,6 +749,7 @@ fails to instatiate the second.
 
 
 \subsection{Implementation details of the binary patcher}
+\label{sect:binpatch}
 
 Once an appropriate dynamic critical section has been discovered, it
 must be converted to a static one.  Mapping the dynamic points into
@@ -765,8 +764,7 @@ frame.  Besides simplifying the binary patching problem, this has the
 (sometimes) useful side-effect of expanding the critical section, and
 generally moving it to boundaries which are more likely to correspond
 to the original programmers' ideas about where critical section
-boundaries ``should be''\editorial{Rephrase}.\editorial{\emph{Should}
-  do this; currently rely on doing it by hand.}
+boundaries ``should be''\editorial{Rephrase}.
 
 Once we have obtained start and end points in the same function frame,
 we examine the program's machine code starting from the start point,
@@ -836,6 +834,7 @@ situations.
 We have not implemented this in our current prototype.
 
 \section{Validation of assumptions}
+\label{sect:validassumpt}
 
 Main assumptions which we make:
 
@@ -849,12 +848,13 @@ by another thread.  We validated this assumption by writing a custom
 Valgrind\needCite{} tool which counts the number of cross-thread stack
 writes by a program, and demonstrated that a number of commonly-used
 programs make very few such accesses (the results are in table
-\editorial{...}).  These experiments are more than a bit
+\ref{tab:xthreadfreq}).  These experiments are more than a bit
 noddy\editorial{...}, and are not intended to tell anyone anything
 which they don't already know, but are sufficient to suggest that the
 assumption that stacks are thread private is unlikely to be a serious
 source of inaccuracy in our characterisations.
 
+\begin{table}
 \begin{tabular}{lll}
 Program & How exercised & Number of cross-thread stack modifications \\
 Firefox & Started, used to load a simple page, and shut down again & 18 \\
@@ -862,10 +862,13 @@ The Gimp & Started, used to open a JPEG file, and then shut down again & 6 \\
 Thunderbird & Started, used to retrieve email from an IMAP server, and shut down again & 5\\
 Amarok & Started and shut down again & 12
 \end{tabular}
+\caption{Frequency of cross-thread stack stores for some common applications}
+\label{tab:xthreadfreq}
+\end{table}
 
 Another key assumption is the stack satisfaction heuristic, used to
-match loads and stores to stack addresses, described in
-section\editorial{...}.  To validate this assumption, we implemented
+match loads and stores to stack addresses, described in section
+\ref{sect:resolvestack}.  To validate this assumption, we implemented
 another Valgrind skin which logged all stack accesses made by a
 process, and then used an offline analysis to first determine what
 predictions the heuristic would have made, and when they would have
@@ -911,6 +914,7 @@ thunderbird & Genuine TOCTOU & 1 & $4739 \pm 6.19$ & 758MiB & 6 & 14
 \end{tabular}
 \caption{Summary of results obtained from running the bug fixing
   program five times on a single log file collected from each bug.}
+\label{tab:perf_summary}
 \end{table*}
 
 \begin{figure*}
@@ -918,6 +922,7 @@ thunderbird & Genuine TOCTOU & 1 & $4739 \pm 6.19$ & 758MiB & 6 & 14
 \caption{Breakdown of how long the various phases take, as fractions
   of the entire fix-generating process.  Mean and standard deviation
   from five runs on a single log file.}
+\label{fig:phasedistribution}
 \end{figure*}
 
 \begin{figure*}
@@ -925,12 +930,14 @@ thunderbird & Genuine TOCTOU & 1 & $4739 \pm 6.19$ & 758MiB & 6 & 14
 \caption{Break down of how long the phases take, ignoring time spent
   in the replay engine.  Mean and standard deviation from five runs on
   a single log file for each bug.}
+\label{fig:timesignoringreplay}
 \end{figure*}
 
 \begin{figure*}
-\editorial{Run the experiment and then build the graph.}
+\includegraphics{timing/r4.pdf}
 \caption{Breakdown of the phases from running the fixer on five instances
   of the glibc test bug.}
+\label{fig:r4}
 \end{figure*}
 
 Things to look at:
@@ -944,7 +951,7 @@ the crashed thread.  For implementation reasons, our prototype will
 always backtrack to a branch instruction, and for the purposes of this
 evaluation we limited this backtracking to ten branches.  We
 investigate the effect of changing this parameter in section
-\editorial{...}.
+\ref{sect:eval:backtrack}.
 
 \subsection{Description of test bugs}
 
@@ -1002,8 +1009,9 @@ fix prioritisation heuristic.
 
 \verb|privatise|.  This is the converse of \verb|publish|: a thread is
 attempting to make a structure private, and does it incorrectly.  It
-has already been extensively discussed in section \editorial{...},
-including a description of the fixes suggested by SLI.
+has already been extensively discussed in section
+\ref{sect:ex_privatise}, including a description of the fixes
+suggested by SLI.
 
 \verb|glibc| This is a kernel of glibc bug 2644\editorial{cite bug
   tracker}, which affected versions of glibc from \editorial{...}  to
@@ -1140,38 +1148,48 @@ longer to reproduce, both of which lead to much larger log files.  It
 seems likely that a more intelligent replay strategy could
 significantly reduce this cost.
 
-One interesting result, illustrated in figure \editorial{...}, is that
-even though this bug took by far the longest to fix of any of the test
-cases, the time spent performing analysis was by far the smallest.
-This is because all of the other tests execute the faulty code in a
-tight loop until it crashes, which means that there are many
-non-crashing executions of the code in the log, and in particular
-there are many stores to memory locations involved in the state
-machines, and the state machines must be evaluated against all of
-these stores in order to determine the boundaries of critical sections
-outside of the crashed thread.  By contrast, the \verb|thunderbird|
-test crashed the first time the buggy code was run, and there are very
-few stores to relevant addresses.  This means that deriving these
-critical sections is very quick, and the total analysis time is very
-small.
+One interesting result, illustrated in figure
+\ref{fig:timesignoringreplay}, is that even though this bug took by
+far the longest to fix of any of the test cases, the time spent
+performing analysis was by far the smallest.  This is because all of
+the other tests execute the faulty code in a tight loop until it
+crashes, which means that there are many non-crashing executions of
+the code in the log, and in particular there are many stores to memory
+locations involved in the state machines, and the state machines must
+be evaluated against all of these stores in order to determine the
+boundaries of critical sections outside of the crashed thread.  By
+contrast, the \verb|thunderbird| test crashed the first time the buggy
+code was run, and there are very few stores to relevant addresses.
+This means that deriving these critical sections is very quick, and
+the total analysis time is very small.
 
 \subsection{Performance results}
 
-As can be seen from table \editorial{...} and figure \editorial{...},
-the time taken to produce a fix is generally reasonable, ranging
-between a few seconds in the simplest cases to an hour and half to
-produce suggested fixes.  The time taken by the core analysis phases
-is generally much less than this, with the remainder of the time
-taken by loading an initial snapshot of the program's memory and
-replaying the log files.
+As can be seen from table \ref{tab:perf_summary}, the time taken to
+produce a fix is generally reasonable, ranging between a few seconds
+in the simplest cases to an hour and half to produce suggested fixes.
+The time taken by the core analysis phases is generally much less than
+this, with the remainder of the time taken by loading an initial
+snapshot of the program's memory and replaying the log
+files.\editorial{...}
+
+\subsection{Variability across multiple reproductions}
+
+Figure \ref{fig:r4} shows the effect of different reproductions of a
+bug upon the time taken to fix it.  In this experiment, the
+\verb|glibc| bug was reproduced and logged five times, and each log
+file was then used as input to the fix generation process.  Each run
+reproduced the bug after a different number of iterations, and this is
+reflected in the different amounts of time taken by the ``constructing
+memory trace'' phase, whose time is dominated by replaying the log
+file.  The other phases take roughly constant time across the five
+reproductions, which again suggests that the algorithm is correctly
+identifying the important parts of the execution\editorial{...}.
 
 \subsection{Effects of backtracking further}
+\label{sect:eval:backtrack}
 
 \editorial{Do the experiments, and then write them up.}
-
-\subsection{Complexity of generated state machines}
-
-\editorial{Write me}
 
 \section{Related work}\editorial{This is a bit of a bestiary.  Could do with a bit more analysis.}
 
