@@ -120,9 +120,7 @@ moderate amount of time (ranging from seconds in simple cases to a few
 hours for more complicated bugs).  SLI does not depend on programmer
 annotations or semantic knowledge of the underlying operating system
 or libraries, but can make use of such information when it is
-available\editorial{Our total use of such knowledge at the moment is
-  to say that \_\_assert\_fail() always crashes and sleep() is a
-  no-op, so that might be slightly too strong.}.
+available.
 
 Our approach consists of several key phases.  First, the bug must be
 captured under a deterministic replay system.  The exact details of
@@ -164,6 +162,9 @@ render the software unusable without being unsafe within this
 definition.  It is in general extremely difficult to avoid this kind
 of issue without detailed semantic knowledge of the desired behavior
 of the application, and we do not attempt it here.
+
+\editorial{Analogy: SLI is static analysis directed at a particular
+  bug and using the dynamic trace as an oracle.  Worth including?}
 
 \section{Capturing the bug}
 
@@ -249,13 +250,15 @@ therefore makes sense that, when an approximation must be made in
 order to reduce execution time, or simply to make an analysis
 feasible, it should be made on these speculative paths.
 
-We also attempt to make the machine more accurate at points which are
-nearer to the crash, and approximate more aggressively at points which
-occurred earlier in the execution.\editorial{A good idea because older
-  instructions require more analysis, so to keep it plausibly quick
-  you need to approximate whether you want to or not.  Also, stuff
-  which happened shortly before the crash is more likely to be
-  interesting, anyway.}
+Similarly, we also attempt to make the machine more accurate at points
+which are nearer to the crash, and approximate more aggressively at
+points which occurred earlier in the execution.  There are two main
+reasons for this.  First, details which occur shortly before the crash
+are more likely to be directly relevant to it.  Second, the time taken
+by some of the analysis steps involved in producing a state machine
+grow more than linearly in the distance to the crash, and so more
+aggressive simplification is necessary in order to keep the analysis
+tractable.\editorial{...}
 
 \subsection{The proximal cause}
 The first phase of our algorithm is to locate the first point in the
@@ -407,23 +410,27 @@ Many load instructions will access a thread's local stack.  While it
 is, in principle, possible for one of these accesses to be involved in
 a concurrency bug, it is in practise highly unlikely, as it is unusual
 for one thread to access another's stack (see section
-\ref{sect:validassumpt}).  It is therefore useful to be able to
-resolve these loads, by finding the instruction which produced the
-data which is loaded, without performing more expensive analysis
-steps.  We use a simple heuristic in order to do this.  When we
-encounter a store instruction, we check if the instruction occurred in
-the captured execution.  If it did, and if it stored to the stack in
-that case, we check through the log to determine which instructions
-subsequently loaded the stored value.  We then check if any of those
-loads appear in the current state machine, and, if they do, we assume
-that they will always load the value stored by the current
-instruction.  This allows the load to be eliminated, simplifying the
-machines.  This is obviously an unsound heuristic, and will
-occasionally produce incorrect predictions, which will lead to an
-incorrect characterisation of the program's behavior; see section
+\ref{sect:validassumpt}).  It is therefore useful to be able to match
+these loads to the stores which originally produced the loaded value,
+and hence to eliminate them.  We use a simple heuristic in order to do
+so.  When we encounter a store instruction, we check if the
+instruction occurred in the captured execution, and if it did, and it
+stored to the stack in that case, we traverse the log to determine
+which instructions subsequently loaded the stored value.  If any of
+those loads appear in the current state machine then we assume that
+they will load the value stored by this instruction, effectively
+eliminating them and thus simplifying the machine.
+
+This is obviously an unsound heuristic, and will occasionally produce
+incorrect predictions, which will lead to an incorrect
+characterisation of the program's behavior; see section
 \ref{sect:validassumpt} for a discussion of the effects of these
 errors upon the final result, and an estimate of the frequency of
-these errors.\editorial{Whole paragraph would benefit from rewriting.}
+these errors.\editorial{It kind of looks like this assumes a static
+  data flow graph, but it actually sometimes works even when you don't
+  have that.  It's also quite a bit stronger than just only resolving
+  constant offsets from rsp, but explaining why is kind of time
+  consuming.}
 
 \subsubsection{Branch instructions}
 \label{sect:branch_instrs}
@@ -486,8 +493,9 @@ once, and so dynamic instructions can be referred to unambiguously by
 their static location in the CFG.  We choose edges to remove based on
 two heuristics.  First, we try not to remove any edges which are
 represented in the captured execution.  Second, we try not to
-partition the graph, which minimizes the number of paths which are
-discarded.\editorial{...}
+partition the graph, so that as many instructions as possible, and
+hence as much of the program's behavior as possible, are represented
+in the final state machine.
 
 The result is a DAG of instructions, rooted at the branch instruction
 and with state machines at all of its leaves, which approximates the
@@ -565,6 +573,7 @@ in the details of how a bug is reproduced.\editorial{Kind of needs
   rephrasing.  It's a pretty important point, as well.}
 
 \section{Investigating the multi-threaded behavior of the program}
+\label{sect:multi_threading}
 
 Once a single-threaded characterization of the bug has been produced,
 it is possible to investigate the crashed thread's interactions with
@@ -581,16 +590,28 @@ the number of times which the log file has to be
 replayed.\editorial{Evidence?  Also, so what?}
 
 Our implementation of this strategy has several stages.  First, we
-determine which \editorial{concrete} memory locations are relevant to
-the state machines in the current batch, by replaying the log from the
-beginning and evaluating the state machines wherever they are
-applicable, which we define to mean that the current instruction and
-call stack match those for which the state machine was derived, and
-recording the memory locations which were loaded\editorial{Holy run on
-  sentence, batman.}.  The log can then be replayed again collecting
-all of the instructions which store to those locations, along with the
-values which are stored, and so produce an additional log showing all
-changes to the relevant addresses.
+determine which memory locations are relevant to the state machines in
+the current batch, by replaying the log from the beginning and
+evaluating the state machines wherever they are applicable, and
+recording the memory locations which were loaded.  The log can then be
+replayed again collecting all of the instructions which store to those
+locations, along with the values which are stored, and so produce an
+additional log showing all changes to the relevant addresses.
+
+Applicability in this context means that the instruction for which the
+state machine was derived is sufficiently similar to the current point
+in execution that evaluating the machine is likely to produce
+meaningful results.  This is complicated by the way in which the state
+machines combine both static and dynamic information, and so matching
+either the specific dynamic instruction or the static instruction
+pointer for which the machine was derived is likely to be
+insufficient\editorial{Justification?}.  Our approach is to consider
+two points to match if both the instruction pointer and the call stack
+match.  This is equivalent to saying that the instructions match if
+they would have had the same instruction pointer had every function on
+the stack been inlined into its caller, which meshes
+nicely\editorial{don't like that phrasing} with our approach of
+inlining every encountered function during CFG construction.
 
 Next, the state machines are specialized to particular points in the
 log.  This involves replaying the log a third time and, whenever the
@@ -688,16 +709,16 @@ C_s.n_s + {\sum_{i}}s_i$ where $n_u$ is the number of points in the
 log where we are unable to produce a crash prediction\editorial{Less
   well-defined than it sounds...}, $n_s$ is the total number of
 critical sections, $s_i$ is the number of accesses in the $i$th
-critical section, $C_s$ is a constant reflecting the cost of
-introducing a new empty critical section, and $U$ is a much larger
-constant which reflects the logical cost of a partial fix.  Our
-prototype sets $U=1000$ and $C_s=10$, strongly preferring fixes for
-which all unsafe states can be eliminated and weakly preferring fixes
-with a smaller number of critical sections.\editorial{Long sentence.}
+critical section, and $C_s$ and $U$ are constants reflecting the cost
+of introducing a new empty critical section and of only partially
+fixing the bug, respectively.  Our prototype sets $U=1000$ and
+$C_s=10$, strongly preferring fixes for which all unsafe states can be
+eliminated and weakly preferring fixes with a smaller number of
+critical sections.
 
 In our evaluation, there are generally only a small number of possible
-fixes, all of which are correct and none would obviously lead to
-pathological performance, and so the exact choice of prioritisation
+fixes, all of which are correct and none of which would obviously lead
+to pathological performance, and so the exact choice of prioritisation
 heuristic does not appear to be critical.
 
 \subsection{Example}
@@ -892,6 +913,11 @@ We use direct jumps wherever possible and the debug facilities
 otherwise.\editorial{Discussion of how often these things actually
   work?}
 
+One potentially useful property of these patches is that they can be
+straightforwardly applied to running programs, and so once a fix has
+been discovered it could be applied to running applications without
+any downtime or loss of data.\editorial{Application communities?}
+
 \section{Deadlocks}
 \label{sect:deadlocks}
 
@@ -1045,26 +1071,12 @@ phases are, in brief:
   \ref{sect:resolvestack}.
 \item Building the initial state machines, using the backtracking
   algorithm described in section \ref{sect:build_state_machines}.
-\item Determining which memory locations are potentially relevant to
-  the state machines.  This involves replaying the log again and
-  evaluating the machines wherever possible, recording which concrete
-  memory locations it depends on.
-\item Collecting logs of all of the stores to potentially relevant
-  addresses.  This amounts to replaying the log once again and
-  recording every configuration of values in relevant locations which
-  is observed, along with the stores which cause the machine to enter
-  and leave that configuration.\editorial{Reference earlier sections}
-  Some of the referenced addresses may turn out to be constant, and in
-  that case we substitute that constant value in place of the load
-  expression in the state machine.
-\item Specializing the state machines from one which can be evaluated
-  at any dynamic instance of a particular instruction to one which is
-  only valid at some specific dynamic instance.  Selecting the
-  appropriate point at which to perform specialization requires the
-  log to be replayed once more.\editorial{Reference earlier sections}
-\item Finally, this specialized state machine can be combined with the
-  relevant address logs to produce a set of potential fixes, using the
-  algorithm described in section \ref{sect:gen_fix}.
+\item Discovering relevant addresses, building logs of those
+  addresses, and specializing the state machines, as described in
+  section \ref{sect:multi_threading}.
+\item Finally, combining the specialized machines and address logs to
+  produce a set of potential fixes, using the algorithm described in
+  section \ref{sect:gen_fix}.
 \end{itemize}\editorial{This doesn't really belong here; maybe move into one of the implementation sections.}
 
 Two main observations can be drawn from the figure.  First,
@@ -1089,7 +1101,7 @@ the greater complexity of the buggy program.
 
 Figure \ref{fig:timesignoringreplay} shows how much time is taken by
 the various phases ignoring the time taken to replay the log file.
-
+\editorial{More}
 
 \begin{figure*}
 \includegraphics{timing/r4.pdf}
@@ -1191,7 +1203,7 @@ expected, consisting of two critical sections, one of which contained
 just the load of the global pointer in the consuming thread and the
 other spanning the actions of the producing thread from the point at
 which it published the structure to the point at which it finished
-initialising it. \editorial{...}  This is a correct fix.
+initialising it.  This is a correct fix.
 
 The other suggestion was an artifact of our test harness, which
 repeatedly published, initialised, unpublished, and then deinitialised
@@ -1417,10 +1429,8 @@ are a couple of important differences between their approach and ours:
 \item Kivati requires access to the program's source code during the
   initial static analysis phase, whereas SLI only requires the binary.
 
-\item In theory, SLI can be applied to a wider class of bugs than
-  Kivati, although in practise the complexity of the analysis and the
-  difficulty of generating a fix for more complicated bugs means that
-  this is not a particularly useful ability.
+\item SLI can be applied to a wider class of bugs than Kivati, such as
+  the \verb|twovar| example described above.
 \end{itemize}
 
 Another approach, taken by systems such as
@@ -1507,7 +1517,9 @@ would provide some potentially useful hints as to the nature and cause
 of the error, allowing the system to be applied in many more
 situations.  We intend to investigate this idea more fully in future.
 
-\editorial{Optimizations, use of semantic knowledge.}
+\editorial{Optimizations, use of semantic knowledge, balancing use of
+  dynamic oracle against static analysis.  Maybe mention deadlocks
+  again?}
 
 \section{Conclusions}
 
