@@ -119,7 +119,7 @@ overhead, and the process of generating the fix itself takes only a
 moderate amount of time (ranging from seconds in simple cases to a few
 hours for more complicated bugs).  SLI does not depend on programmer
 annotations or semantic knowledge of the underlying operating system
-or libraries, but can use such information when it is
+or libraries, but can make use of such information when it is
 available\editorial{Our total use of such knowledge at the moment is
   to say that \_\_assert\_fail() always crashes and sleep() is a
   no-op, so that might be slightly too strong.}.
@@ -127,18 +127,18 @@ available\editorial{Our total use of such knowledge at the moment is
 Our approach consists of several key phases.  First, the bug must be
 captured under a deterministic replay system.  The exact details of
 how this is done do not matter, and so existing high-performance
-replay systems such as PRES\needCite{} could be used
+replay systems such as PRES\cite{Park2009} could be used
 straightforwardly.  The captured trace is then examined in conjunction
 with the program binary so as to build a series of approximations of
-the parts of the program's behavior which are most closely relevant
-to the bug, in a process similar to program slicing\needCite{}.  These
-approximations can be used to predict whether executing a particular
-subset of a program's instructions atomically at a particular point in
-its execution would have led to a crash, and this can then be
-leveraged to determine what additional synchronization would have
-prevented the crash from happening.  This synchronization can then be
-added to the program automatically using a simple binary rewriter, and
-hence fix the bug.
+the parts of the program's behavior which are most closely relevant to
+the bug, in a process similar to program slicing\cite{Weiser1979}.
+These approximations can be used to predict whether executing a
+particular subset of a program's instructions atomically at a
+particular point in its execution would have led to a crash, and this
+can then be leveraged to determine what additional synchronization
+would have prevented the crash from happening.  This synchronization
+can then be added to the program automatically using a simple binary
+rewriter, and hence fix the bug.
 
 This analysis is, unfortunately, both unsound and incomplete, in the
 sense that the ``fixed'' program will still sometimes crash, and the
@@ -269,16 +269,17 @@ classes of bugs, such as use-after-frees, there can be a significant
 lag between the first definitely bad behavior (such as the use of
 released memory) and the program crash, and this can cause later
 phases to take an excessively long time.  This can be mitigated by
-applying a dynamic analysis tool, such as Valgrind\needCite{}, to the
-captured execution, which provides a more accurate starting point for
-the rest of the analysis, and hence significantly reducing the total
-time taken.  In our prototype, we use a straightforward analysis to
-detect use-after-free bugs at the first reference to released memory;
-combining this with other forms of analysis or with
-application-specific knowledge would be straightforward, and would
-allow other classes of bugs to be detected.\editorial{I don't actually
-  have any examples of bugs which depend on this, annoyingly.  Maybe I
-  should kill it, or move it to future work?}
+applying a dynamic analysis tool, such as
+Valgrind\cite{Nethercote2007}, to the captured execution, which
+provides a more accurate starting point for the rest of the analysis,
+and hence significantly reducing the total time taken.  In our
+prototype, we use a straightforward analysis to detect use-after-free
+bugs at the first reference to released memory; combining this with
+other forms of analysis or with application-specific knowledge would
+be straightforward, and would allow other classes of bugs to be
+detected.\editorial{I don't actually have any examples of bugs which
+  depend on this, annoyingly.  Maybe I should kill it, or move it to
+  future work?}
 
 \begin{figure*}
  \begin{subfloat}
@@ -880,11 +881,11 @@ doing so:
 \item Alternatively, we can use the processor's debug facilities to
   gain control, where available.  These can usually be used to insert
   breakpoints on arbitrary instructions, whether via the debug
-  registers\needCite{} or by simply patching in a debug instruction,
-  and hence can be used to gain control at any point in the program.
-  Unfortunately, they are much slower than a simple direct branch, as
-  they require an expensive trap to the operating system kernel and,
-  on Unix-like systems, the delivery of a signal.
+  registers\cite{DebugRegisters} or by simply patching in a debug
+  instruction, and hence can be used to gain control at any point in
+  the program.  Unfortunately, they are much slower than a simple
+  direct branch, as they require an expensive trap to the operating
+  system kernel and, on Unix-like systems, the delivery of a signal.
 \end{itemize}
 
 We use direct jumps wherever possible and the debug facilities
@@ -1280,13 +1281,14 @@ were supersets of this suggestion, extending it to include various
 accesses in \verb|pthread_barrier_wait|.
 
 This illustrates two important weaknesses of the approach.  First,
-because SLI does not know anything about any operating-system, it
-cannot take advantage of any existing synchronisation present in the
-program (in this case, the \verb|pthread_barrier_wait|s make the
-critical sections protecting statements 13 and 14 redundant).  It also
-means that the analysis must explore these standard functions, and can
-sometimes attempt to ``fix'' the benign races inherent in
-synchronisation operations, which is unlikely to be productive.
+because SLI does not know anything about any operating system-provided
+functionality, it cannot take advantage of any existing
+synchronization present in the program (in this case, the
+\verb|pthread_barrier_wait|s make the critical sections protecting
+statements 13 and 14 redundant).  It also means that the analysis must
+explore these standard functions, and can sometimes attempt to ``fix''
+the benign races inherent in synchronisation operations, which is
+unlikely to be productive.
 
 Second, SLI can only fix the bug which it observes.  The original
 developers of this code had intended that only one thread would assign
@@ -1497,13 +1499,15 @@ otherwise the analysis required becomes prohibitively expensive.  This
 could be ameliorated somewhat using programmer- or user-provided
 correctness specifications, which would allow a richer class of bugs
 to be fixed, but these are likely to be difficult to obtain.
-Alternatively, a scheme such as Daikon\needCite{} or DIDUCE\needCite{}
-could be used to derive these specifications automatically by
-observing the program's execution.  If we then observed an inferred
-invariant shortly before SLI is invoked then that would provide some
-potentially useful hints as to the nature and cause of the error,
-allowing the system to be applied in many more situations.  We intend
-to investigate this idea more fully in future.
+Alternatively, a scheme such as Daikon\cite{Ernst2007} or
+DIDUCE\cite{Hangal2002} could be used to derive these specifications
+automatically by observing the program's execution.  If we then
+observed an inferred invariant shortly before SLI is invoked then that
+would provide some potentially useful hints as to the nature and cause
+of the error, allowing the system to be applied in many more
+situations.  We intend to investigate this idea more fully in future.
+
+\editorial{Optimizations, use of semantic knowledge.}
 
 \section{Conclusions}
 
