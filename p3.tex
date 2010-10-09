@@ -1065,13 +1065,6 @@ to be parsed also varied.  A similar pattern was observed of the other
 bugs; we omit the full results due to space constraints\editorial{Not
   sure this is all that interesting...}.
 
-One important parameter to the system is how far to backtrack through
-the crashed thread.  For implementation reasons, our prototype will
-always backtrack to a branch instruction, and for the purposes of this
-evaluation we limited this backtracking to ten branches.  We
-investigate the effect of changing this parameter in section
-\ref{sect:eval:backtrack}.\editorial{Moo}
-
 \subsection{Semantic knowledge}
 
 For these tests, our only semantic knowledge is:
@@ -1079,7 +1072,7 @@ For these tests, our only semantic knowledge is:
 -- Calling \verb|__assert_fail| always leads to a crash
 
 -- The \verb|sleep| function is a semantic no-op.  We occasionally use
-this to make races reproduce more easily.
+this to make races reproduce more easily.\editorial{moo}
 
 \subsection{Description of test bugs}
 \label{sect:bug_descr}
@@ -1333,7 +1326,32 @@ time spent performing replay.
 \subsection{Effects of backtracking further}
 \label{sect:eval:backtrack}
 
-\editorial{Do the experiments, and then write them up.}
+\begin{figure}
+\includegraphics{clog/clog.pdf}
+\caption{Time taken by the analysis phases of the thunderbird bug
+  versus the level of backtracking applied to the crashed thread.}
+\label{fig:eval:backtrack}
+\end{figure}
+
+One important parameter to the system is how far to backtrack through
+the crashed thread.  For implementation reasons, our prototype will
+always backtrack to a branch instruction, and for the above tests we
+limited this backtracking to ten branches.  Figure
+\ref{fig:eval:backtrack} shows the effect of changing this parameter
+upon the time taken by the non-replay components of the
+\verb|thunderbird| test.  It can be seen that the time taken increases
+rapidly as the distance which we backtrack increases, by a factor of
+more than 500 when going from a single level of backtracking to fifty
+levels.  Note, however, that the total time taken by the non-replay
+analysis is, even with a backtracking depth of 50, still just 620ms,
+whereas the replay components take nearly eighty minutes.  None of our
+tests depend on more than three levels of backtracking to produce a
+correct fix (and the \verb|thunderbird| test requires just one), and
+so this suggests that SLI should be able to backtrack sufficiently to
+solve most bugs in a reasonable amount of time.
+
+\editorial{At the moment, this is all based off a single run at each
+  depth.  Re-do with error bars once the repeats have finished running.}
 
 \section{Related work}\editorial{This is a bit of a bestiary.  Could do with a bit more analysis.}
 

@@ -10,3 +10,4 @@
 *.blg
 *.gpl
 timing/time_without_replay
+clog/output
