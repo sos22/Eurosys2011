@@ -382,7 +382,7 @@ For example, the previously-derived state machine for instruction
 at \verb|G| of
 
 \begin{verbatim}
-if BadAddr (load(reg(rcx)@G) + 48)
+if BadAddr (load(rcx@G) + 48)
  then crash
  else no-crash
 \end{verbatim}
@@ -1096,7 +1096,7 @@ state machine generation process will produce a state machine similar
 to this:
 
 \begin{verbatim}
-if reg(rax) != load(global2@l2)
+if rax != load(global2@l2)
  then crash
  else no-crash
 \end{verbatim}
