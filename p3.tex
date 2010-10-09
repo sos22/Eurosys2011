@@ -1064,14 +1064,32 @@ the greater complexity of the buggy program.
 
 Figure \ref{fig:timesignoringreplay} shows how much time is taken by
 the various phases ignoring the time taken to replay the log file.
-\editorial{More}
+One interesting observation on this graph is that \verb|thunderbird|
+spends by far the least time generating fixes (0.2$\mu{}$s versus
+hundreds of milliseconds to a few seconds for the other tests),
+despite taking by far the most time overall (an hour and a half versus
+less than ten seconds).  This is because in the \verb|thunderbird|
+test the buggy code is run only once whereas the other tests run the
+buggy code in a tight loop until it crashes, and so the logs contain
+many instances of both the critical code and stores to the relevant
+memory locations.  The state machines must therefore by evaluated in
+many more contexts in the artificial bugs, which dramatically
+increases the time taken by the analysis.  This is an encouraging
+result: most bugs occur in code which is executed infrequently, and so
+it would be reasonable to expect that most bugs would have analysis
+time more similar to the \verb|thunderbird| bug than to the artificial
+ones.\editorial{...}
 
-\begin{figure*}
-\includegraphics{timing/r4.pdf}
-\caption{Breakdown of the phases from running the fixer on five instances
-  of the glibc test bug.}
-\label{fig:r4}
-\end{figure*}
+We also investigate how the analysis depends on the exact details of
+the way in which a particular bug is reproduced, by running our tool
+on five independent reproductions of the \verb|glibc| bug.  Every
+reproduction produced the same set of state machines and suggested
+fixes.  The time taken by the analysis process varied significantly,
+however (from eight to thirteen seconds), mostly because the time
+taken to reproduce the bug varied and so the size of the log which had
+to be parsed also varied.  A similar pattern was observed of the other
+bugs; we omit the full results due to space constraints\editorial{Not
+  sure this is all that interesting...}.
 
 One important parameter to the system is how far to backtrack through
 the crashed thread.  For implementation reasons, our prototype will
@@ -1274,16 +1292,17 @@ program's intended behavior, and is an inherent risk in any system
 which attempts to modify a program automatically without any
 programmer-provided assistance.
 
-\verb|thunderbird| is Mozilla bug number 391259\editorial{Cite bug
-  tracker?}, a simple time-of-check, time-of-use race in the IMAP
-client component of Thunderbird, an e-mail client.  We modified
-Thunderbird to include some additional debugging messages and used a
-custom scheduler in order to make the bug reproduce more readily; this
-test is otherwise as it would have been encountered in the
-wild\editorial{...}.  The race is between
-\verb|nsImapProtocol::CloseStreams()|, which runs on the UI thread,
-and \verb|nsImapProtocol::ProcessCurrentURL()|, which runs in an IMAP
-worker thread.  The relevant parts of the program are as follows:
+\verb|thunderbird| is Mozilla bug number
+391259\cite{thunderbird39125}, a simple time-of-check, time-of-use
+race in the IMAP client component of Thunderbird, a popular
+open-source e-mail client.  We modified Thunderbird to include some
+additional debugging messages and used a custom scheduler in order to
+make the bug reproduce more readily; this test is otherwise as it
+would have been encountered in the wild\editorial{...}.  The race is
+between \verb|nsImapProtocol::CloseStreams()|, which runs on the UI
+thread, and \verb|nsImapProtocol::ProcessCurrentURL()|, which runs in
+an IMAP worker thread.  The relevant parts of the program are as
+follows:
 
 \begin{verbatim}
 void nsImapProtocol::CloseStreams()
@@ -1324,44 +1343,6 @@ complexity of the target program and the fact that the bug simply took
 longer to reproduce, both of which lead to much larger log files.  It
 seems likely that a more intelligent replay strategy could
 significantly reduce this cost.
-
-One interesting result, illustrated in figure
-\ref{fig:timesignoringreplay}, is that even though this bug took by
-far the longest to fix of any of the test cases, the time spent
-performing analysis was by far the smallest.  This is because all of
-the other tests execute the faulty code in a tight loop until it
-crashes, which means that there are many non-crashing executions of
-the code in the log, and in particular there are many stores to memory
-locations involved in the state machines, and the state machines must
-be evaluated against all of these stores in order to determine the
-boundaries of critical sections outside of the crashed thread.  By
-contrast, the \verb|thunderbird| test crashed the first time the buggy
-code was run, and there are very few stores to relevant addresses.
-This means that deriving these critical sections is very quick, and
-the total analysis time is very small.
-
-\subsection{Performance results}
-
-As can be seen from table \ref{tab:perf_summary}, the time taken to
-produce a fix is generally reasonable, ranging between a few seconds
-in the simplest cases to an hour and half to produce suggested fixes.
-The time taken by the core analysis phases is generally much less than
-this, with the remainder of the time taken by loading an initial
-snapshot of the program's memory and replaying the log
-files.\editorial{...}
-
-\subsection{Variability across multiple reproductions}
-
-Figure \ref{fig:r4} shows the effect of different reproductions of a
-bug upon the time taken to fix it.  In this experiment, the
-\verb|glibc| bug was reproduced and logged five times, and each log
-file was then used as input to the fix generation process.  Each run
-reproduced the bug after a different number of iterations, and this is
-reflected in the different amounts of time taken by the ``constructing
-memory trace'' phase, whose time is dominated by replaying the log
-file.  The other phases take roughly constant time across the five
-reproductions, which again suggests that the algorithm is correctly
-identifying the important parts of the execution\editorial{...}.
 
 \subsection{Effects of backtracking further}
 \label{sect:eval:backtrack}
