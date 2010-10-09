@@ -616,9 +616,14 @@ equivalent partition for the non-specialized machines:
   \verb|no-crash|.
 \item Likewise, if every specialized machine predicted \verb|crash|,
   the non-specialized prediction is also \verb|crash|.
-\item If the specialized machines disagree, the region is marked
-  as unknown in the non-specialized partition.
+\item If the specialized machines disagree, or if one of the machines
+  attempts to reference an inaccessible memory location, the region is
+  marked as unknown in the non-specialized partition.
 \end{itemize}\editorial{...}
+
+If the resulting schedule does not contain any \verb|crash| regions,
+or does not contain any \verb|no-crash| regions, the original
+unspecialized state machine is discarded as unhelpful.
 
 \subsection{Generating candidate fixes}
 \label{sect:gen_fix}
@@ -1105,6 +1110,15 @@ evaluation we limited this backtracking to ten branches.  We
 investigate the effect of changing this parameter in section
 \ref{sect:eval:backtrack}.\editorial{Moo}
 
+\subsection{Semantic knowledge}
+
+For these tests, our only semantic knowledge is:
+
+-- Calling \verb|__assert_fail| always leads to a crash
+
+-- The \verb|sleep| function is a semantic no-op.  We occasionally use
+this to make races reproduce more easily.
+
 \subsection{Description of test bugs}
 
 \verb|toctou|, a simple two-thread time-of-check, time-of-use race.
@@ -1119,26 +1133,42 @@ thread.  This is a correct and minimal fix.
 \verb|twovar|, a two-variable atomicity violation.  In this test,
 there are two global variables, and one thread loops setting both to
 five and then setting both to seven while another thread loops loading
-both and asserting them to be equal.
+both and asserting them to be equal.  SLI produces a single suggested
+fixes in this case.  The fix contains five critical sections, one
+protecting the two loads in the second thread and four singleton
+instructions each of which protects a single store in the other
+thread.  This correctly eliminates the bug.
 
-Suggested fixes:
+This test is illustrated the effect of state machine specialization.
+For the instructions between the two loads, the initial
+single-threaded state machine generation process will produce a state
+machine similar to this:
 
 \begin{verbatim}
-Suggested atomic block: 0 unknown, 4878 bad, 2323 good, local [{40032f;401eed;425739;}2:4002f5], remote {[{40a1a1;4001f9;}1:40035b], [{40a1a1;4001f9;}1:40036f], [{40a1a1;4001f9;}1:40036f, {40a1a1;4001f9;}1:40035b]}
-Suggested atomic block: 0 unknown, 4217 bad, 2984 good, local [{40032f;401eed;425739;}2:4002f5, {40032f;401eed;425739;}2:4002ec], remote {[{40a1a1;4001f9;}1:400351], [{40a1a1;4001f9;}1:40035b], [{40a1a1;4001f9;}1:400365], [{40a1a1;4001f9;}1:40036f], [{40a1a1;4001f9;}1:400351, {40a1a1;4001f9;}1:40035b], [{40a1a1;4001f9;}1:400365, {40a1a1;4001f9;}1:40036f]}
+if reg(rax) != load(global2@l2)
+ then crash
+ else no-crash
 \end{verbatim}
 
-2ec -- load of first variable
-2f5 -- load of second variable
-351 -- first store of first variable
-35b -- first store of second variable
-365 -- second store of first variable
-36f -- second store of second variable
+Where \verb|l2| is the load of the second global variable.  This
+can specialize in two ways:
 
-So the first fix is actually wrong.  Damn.
+\begin{verbatim}
+if 5 != load(global2@l2)
+ then crash
+ else no-crash
+\end{verbatim}
 
-Multi-specialization seems to eliminate it, though.
+\begin{verbatim}
+if 7 != load(global2@l2)
+ then crash
+ else no-crash
+\end{verbatim}
 
+There are no points in the program's execution at which both machines
+will predict \verb|no-crash|, and so the original unspecialized
+machine is discarded as uninteresting.\editorial{Not sure where I'm
+  going with this one...}
 
 \verb|publish|, a broken implementation of the publish pattern.  In
 this pattern, a structure is initialised by one thread and then
@@ -1181,9 +1211,9 @@ fix prioritisation heuristic.\smh{good example of a bad fix which is
 
 \verb|privatise|.  This is the converse of \verb|publish|: a thread is
 attempting to make a structure private, and does it incorrectly.  It
-has already been extensively discussed in section
-\ref{sect:ex_privatise}, including a description of the fixes
-suggested by SLI.
+is the same as the example program in figure
+\ref{fig:broken_privatize}, which has already been extensively
+discussed.
 
 \verb|glibc| This is a kernel of glibc bug 2644\editorial{cite bug
   tracker}, which affected versions of glibc from \editorial{...}  to
