@@ -118,9 +118,8 @@ Furthermore, the fixes will usually have very low performance
 overhead, and the process of generating the fix itself takes only a
 moderate amount of time (ranging from seconds in simple cases to a few
 hours for more complicated bugs).  SLI does not depend on programmer
-annotations or semantic knowledge of the underlying operating system
-or libraries, but can make limited use of such information when it is
-available.
+annotations or semantic knowledge of the program's intended behavior,
+but can make (limited) use of such information when it is available.
 
 Our approach consists of several key phases.  First, the bug must be
 captured under a deterministic replay system.  The exact details of
@@ -258,6 +257,7 @@ aggressive simplification is necessary in order to keep the analysis
 tractable.
 
 \subsection{The proximal cause}
+\label{sect:prox_cause}
 The first phase of our algorithm is to locate the first point in the
 log at which something has definitely gone wrong, and hence to obtain
 a proximal cause of the crash and to nominate one thread as being
@@ -277,9 +277,7 @@ prototype, we use a straightforward analysis to detect use-after-free
 bugs at the first reference to released memory; combining this with
 other forms of analysis or with application-specific knowledge would
 be straightforward, and would allow other classes of bugs to be
-detected.\editorial{I don't actually have any examples of bugs which
-  depend on this, annoyingly.  Maybe I should kill it, or move it to
-  future work?}
+detected.
 
 \begin{figure*}
  \begin{subfloat}
@@ -359,6 +357,10 @@ the start of instruction \verb|H|.  Other simple register-to-register
 arithmetic instructions can be handled in the same way, and hence the
 crash reason can be backtracked across any sequence of such
 instructions.
+
+\editorial{Our implementation uses libVEX to decode x86 instructions
+  into a sequence of micro-operations which can be used as input to
+  this process.} 
 
 \subsubsection{Memory accesses}
 
@@ -456,14 +458,11 @@ Indirect branches, and in general anywhere the target of the branch is
 computed dynamically at runtime, pose an additional challenge here, as
 it is often difficult to statically predict the target of the branch.
 The most common case is return instructions, and we handle these by
-inlining every function into its called
-location\editorial{Conceptually, anyway.  What we actually do is
-  include a backtrace in the name of the instruction, which has the
-  same effect but is much harder to describe concisely.}, eliminating
-most return instructions completely.  The remainder correspond to
-functions which had started but not completed at the time of the
-crash, and we assume that if any of those return then it indicates
-that the bug has been avoided.
+inlining every function into its called location, eliminating most
+return instructions completely.  The remainder correspond to functions
+which had started but not completed at the time of the crash, and we
+assume that if any of those return then it indicates that the bug has
+been avoided.
 
 Other indirect branch instructions are more challenging.  We solve
 this problem by using the captured trace as a simple oracle: if the
@@ -901,37 +900,40 @@ position-independent machine code.  This is combined with a stub
 loader and built into an ELF shared library, which can be loaded into
 the target program using \verb|LD_PRELOAD| (or an equivalent runtime
 mechanism using).  The stub loader is then responsible for actually
-applying the patch to the program.  We use two main strategies for
-doing so:
-
-\begin{itemize}
-\item The entrypoint instruction can be replaced with a direct jump to
-  the patch fragment.  This is the most efficient way of gaining
-  control, but is only safe if the entrypoint instruction is large
-  enough to contain the jump instruction.  Otherwise, we would also
-  have to change the next instruction, which is dangerous without
-  performing sufficient static analysis to be confident that there are
-  no undiscovered jumps to it.  Doing that kind of static analysis on
-  arbitrary binary programs is challenging and we do not attempt it.
-
-\item Alternatively, we can use the processor's debug facilities to
-  gain control, where available.  These can usually be used to insert
-  breakpoints on arbitrary instructions, whether via the debug
-  registers\cite{DebugRegisters} or by simply patching in a debug
-  instruction, and hence can be used to gain control at any point in
-  the program.  Unfortunately, they are much slower than a simple
-  direct branch, as they require an expensive trap to the operating
-  system kernel and, on Unix-like systems, the delivery of a signal.
-\end{itemize}
-
-We use direct jumps wherever possible and the debug facilities
-otherwise.\editorial{Discussion of how often these things actually
-  work?}
+applying the patch to the program, either by patching a jump into the
+entrypoint instruction or using the processor's debug facilities.
 
 One potentially useful property of these patches is that they can be
 straightforwardly applied to running programs, and so once a fix has
 been discovered it could be applied to running applications without
 any downtime or loss of data.\editorial{Application communities?}
+
+\subsection{Semantic knowledge}
+\label{sect:semanticknowledge}
+SLI needs only very limited semantic knowledge of the intended
+behavior of the program.  At present, only two properties of the
+target program are assumed:
+
+\begin{itemize}
+\item Calling the \verb|__assert_fail| function is assumed to always
+  indicate a bug.
+\item Exiting due to an unhandled signal is likewise assumed to
+  indicate a bug.  In particular, raising \verb|SIGSEGV| will be
+  treated as a bug.
+\end{itemize}
+
+If the use-after-free analysis mentioned in section
+\ref{sect:prox_cause} is used then we also assume that the program
+will never deliberately use memory after passing it to the \verb|free|
+function.  There exist programs for which some or all of these
+assumptions will be false, but they appear to be reasonably rare.
+
+The current implementation provides some facilities for programmers to
+extend this knowledge with additional assumptions, such as flagging
+functions other than \verb|__assert_fail| as indicating bugs or
+applying other dynamic analyses when deriving the proximal cause, but
+these are at presented rather limited.  We intend to expand them
+further in future.\editorial{Wording doesn't really work very well.}
 
 \section{Deadlocks}
 \label{sect:deadlocks}
@@ -1003,11 +1005,21 @@ very na\"ive replay engine would yield significant overall performance
 gains.
 
 \begin{figure*}
-\includegraphics{timing/timings.pdf}
-\caption{Breakdown of how long the various phases take, as fractions
-  of the entire fix-generating process.  Mean and standard deviation
-  from five runs on a single log file for each bug.}
-\label{fig:phasedistribution}
+\subfigure[Length of the phases, as fractions of the entire
+  fix-generating process.]{ \includegraphics[trim=8mm 0 20mm
+    0]{timing/timings.pdf}
+  \label{fig:phasedistribution}
+}\hspace{10mm} \subfigure[Absolute length of the phases, ignoring time
+  spent in the replay engine.]{ \includegraphics[trim=8mm 0 10mm
+    0]{timing/without_replay.pdf}
+  \label{fig:timesignoringreplay}
+}
+\caption{Breakdown of time spent in various phases of the analysis
+  process.  Results presented are mean and standard deviation of five
+  runs of the fix-generating program applied to a single log file for
+  each bug.  Experiments were conducted on an Intel Q6600 with 8GiB of
+  RAM running 64-bit Linux 2.6.28, and the minimal amount of semantic
+  knowledge was used (see section \ref{sect:semanticknowledge}).}
 \end{figure*}
 
 Figure \ref{fig:phasedistribution} shows how the time taken is
@@ -1023,14 +1035,6 @@ long-running \verb|thunderbird| test the runtime is completely
 dominated by the phases which involve replaying the log.  This is
 unsurprising, as it has by far the largest logfile, reflecting the
 greater complexity of the buggy program.
-
-\begin{figure*}
-\includegraphics{timing/without_replay.pdf}
-\caption{Break down of how long the phases take, ignoring time spent
-  in the replay engine.  Mean and standard deviation from five runs on
-  a single log file for each bug.}
-\label{fig:timesignoringreplay}
-\end{figure*}
 
 Figure \ref{fig:timesignoringreplay} shows how much time is taken by
 the various phases ignoring the time taken to replay the log file.
@@ -1048,7 +1052,7 @@ increases the time taken by the analysis.  This is an encouraging
 result: most bugs occur in code which is executed infrequently, and so
 it would be reasonable to expect that most bugs would have analysis
 time more similar to the \verb|thunderbird| bug than to the artificial
-ones.\editorial{...}
+ones.
 
 We also investigate how the analysis depends on the exact details of
 the way in which a particular bug is reproduced, by running our tool
@@ -1059,15 +1063,8 @@ however (from eight to thirteen seconds), mostly because the time
 taken to reproduce the bug varied and so the size of the log which had
 to be parsed also varied.  A similar pattern was observed of the other
 bugs; we omit the full results due to space constraints\editorial{Not
-  sure this is all that interesting...}.
-
-\subsection{Semantic knowledge}
-
-For these tests, our only semantic knowledge is:
-
--- Calling \verb|__assert_fail| always leads to a crash
-
--- Receiving a page fault is bad.
+  sure this is all that interesting, or that I've phrased it very
+  well...}.
 
 \subsection{Description of test bugs}
 \label{sect:bug_descr}
@@ -1267,8 +1264,8 @@ programmer-provided assistance.
 race in the IMAP client component of Thunderbird, a popular
 open-source e-mail client.  We modified Thunderbird to include some
 additional debugging messages and used a custom scheduler in order to
-make the bug reproduce more readily; this test is otherwise as it
-would have been encountered in the wild\editorial{...}.  The race is
+make the bug reproduce more readily; the test is otherwise identical
+to the behavior which a user might have encountered.  The race is
 between \verb|nsImapProtocol::CloseStreams()|, which runs on the UI
 thread, and \verb|nsImapProtocol::ProcessCurrentURL()|, which runs in
 an IMAP worker thread.  The relevant parts of the program are as
@@ -1323,8 +1320,11 @@ time spent performing replay.
 
 \begin{figure}
 \includegraphics{clog/clog.pdf}
-\caption{Time taken by the analysis phases of the thunderbird bug
-  versus the level of backtracking applied to the crashed thread.}
+\caption{Time taken by the analysis phases of the thunderbird bug, in
+  seconds, versus the level of backtracking applied to the crashed
+  thread, in dynamic branches.}\editorial{Do I want to include some
+  indication of how replay time changes as well?  Answer is pretty
+  much that it doesn't, but might be worth saying so.}
 \label{fig:eval:backtrack}
 \end{figure}
 
@@ -1371,6 +1371,9 @@ are a couple of important differences between their approach and ours:
 
 \item SLI can be applied to a wider class of bugs than Kivati, such as
   the \verb|twovar| example described above.
+
+\item The analysis performed by Kivati is somewhat simpler than SLI's,
+  and so is likely to scale to more complicated bugs.
 \end{itemize}
 
 Another approach, taken by systems such as
@@ -1394,13 +1397,7 @@ this is simple and reasonably efficient, and should also eliminate a
 reasonable selection of non-trivial bugs.  The main downside of this
 approach is that it requires non-standard (and presently non-existent)
 hardware, which makes it less practically useful than it otherwise
-would be.  There is also a philosophical argument that, as there is no
-indication that a bug has been fixed, if this approach were ever to
-become widely used it would lead to a kind of moral hazard, where
-programmers respond to the more accommodating hardware by becoming
-more sloppy, and so overall system reliability would not increase by
-as much as might otherwise have been expected.\editorial{Do I really
-  want this here?}
+would be.
 
 There have also been a number of attempts to automatically fix heap
 management bugs, such as buffer overflows and use-after-free errors,
@@ -1423,9 +1420,8 @@ where memory errors are likely to occur and modifying the program's
 memory map to make those errors as harmless as possible.  In this way
 programs are able to continue executing in spite of the presence of
 errors which would otherwise cripple them.  Failure obliviousness
-cannot, however, ever fix a bug, but instead merely lessens its
-effect\editorial{That's far too glib.}.  As such, these techniques can
-be seen as complementary to those discussed here.
+cannot, however, completely remove any errors, and so can be seen as
+complementary to those discussed here.
 
 RX\cite{Qin2007} takes a third strategy.  Here, rather than
 attempting to fix the bug, an attempt is made to determine which
@@ -1460,7 +1456,7 @@ for programmers to introduce their own semantic models, might improve
 our ability to produce useful, performant fixes.  One particularly
 intriguing approach would be to combine SLI with an invariant
 inference scheme such as Daikon\cite{Ernst2007} or
-DIDUCE\cute{Hangal2002}, which would allow us to obtain such semantic
+DIDUCE\cite{Hangal2002}, which would allow us to obtain such semantic
 information compromising SLI's current ability to run on almost
 arbitrary unmodified binaries.  We intend to investigate this idea
 more fully in the future.
@@ -1477,11 +1473,6 @@ techniques do have a number of limitations and drawbacks, we feel that
 they provide a useful basis for ongoing work to extend the set of
 situations in which they are applicable.\editorial{Wibble wibble
   wibble}
-
-\acks
-
-\editorial{The implementation makes quite heavy use of libVEX, which I
-  haven't mentioned so far.  Need to fix that somewhere.}
 
 \bibliographystyle{eurosys}
 
