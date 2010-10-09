@@ -334,7 +334,7 @@ lead to a crash if instructions \verb|X| and \verb|Y| occur between
 instructions \verb|A| and \verb|H|, as in that case \verb|rdx| will
 contain a bad pointer at instruction \verb|J|, which will cause an
 immediate crash.  The proximal cause is then simply
-\verb|if (BadAddr reg(rdx)) then crash else no-crash| (translating the
+\verb|if BadAddr rdx then crash else no-crash| (translating the
 state machine into text in the obvious way), and is valid at the start
 of instruction \verb|J|.
 
@@ -354,17 +354,11 @@ before the instruction was executed.
 In the example, the preceding instruction is \verb|add $48, %rdx|.
 This transforms \verb|rdx| into \verb|rdx+48|.  Applying this
 transformation to the proximal cause of the crash produces
-
-\begin{verbatim}
-if (BadAddr (reg(rdx) + 48))
- then crash
- else no-crash
-\end{verbatim}
-
-This is valid at the start of instruction \verb|H|.  Other simple
-register-to-register arithmetic instructions can be handled in the
-same way, and hence the crash reason can be backtracked across any
-sequence of such instructions.
+\verb|if BadAddr (rdx+48) then crash else no-crash|.  This is valid at
+the start of instruction \verb|H|.  Other simple register-to-register
+arithmetic instructions can be handled in the same way, and hence the
+crash reason can be backtracked across any sequence of such
+instructions.
 
 \subsubsection{Memory accesses}
 
@@ -384,23 +378,22 @@ and we do so; we discuss the handling of loops in section
 \ref{sect:branch_instrs}.
 
 For example, the previously-derived state machine for instruction
-\verb|H| of figure \ref{fig:broken_privatize} will be transformed to
+\verb|H| of figure \ref{fig:broken_privatize} produces a state machine
+at \verb|G| of
 
 \begin{verbatim}
-if (BadAddr (load(reg(rcx)@G) + 48))
+if BadAddr (load(reg(rcx)@G) + 48)
  then crash
  else no-crash
 \end{verbatim}
 
-at \verb|G|, and then to
+and one at \verb|F| of
 
 \begin{verbatim}
-if (BadAddr (load(load(reg(rsp)@F)@G) + 48))
+if BadAddr (load(load(rsp@F)@G) + 48)
  then crash
  else no-crash
 \end{verbatim}
-
-at \verb|F|.
 
 The state machines must also model the effects of stores.  To do this,
 each edge in the machine has a list of $\langle{}$address, value,
@@ -527,7 +520,7 @@ at \verb|F| will load the stored value, and so the state machine
 assigned to \verb|E| will be
 
 \begin{verbatim}
-if (BadAddr (load(fallback_structure@G) + 48))
+if BadAddr (load(fallback_structure@G)+48)
  then crash
  else no-crash
 \end{verbatim}
@@ -538,11 +531,11 @@ now derive a state machine for it.  This will be:
 \begin{verbatim}
 if !CondEq(rflags)
 then
- if (BadAddr (load(load(reg(rsp)@F)@G) + 48))
+ if BadAddr (load(load(rsp@F)@G)+48)
   then crash
   else no-crash
 else
- if (BadAddr (load(fallback_structure@G) + 48))
+ if BadAddr (load(fallback_structure@G)+48)
   then crash
   else no-crash
 \end{verbatim}
@@ -553,11 +546,11 @@ at \verb|A|:
 \begin{verbatim}
 if load(global1@A) != 0
 then
- if (BadAddr (load(load(global1@A)@G) + 48))
+ if BadAddr (load(load(global1@A)@G)+48)
   then crash
   else no-crash
 else
- if (BadAddr (load(fallback_structure@G) + 48))
+ if BadAddr (load(fallback_structure@G)+48)
   then crash
   else no-crash
 \end{verbatim}
@@ -750,11 +743,11 @@ Our earlier example derived the state machine:
 \begin{verbatim}
 if load(global1@A) != 0
 then
- if (BadAddr (load(load(global1@A)@G) + 48))
+ if BadAddr (load(load(global1@A)@G) + 48)
   then crash
   else no-crash
 else
- if (BadAddr (load(fallback_structure@G) + 48))
+ if BadAddr (load(fallback_structure@G) + 48)
   then crash
   else no-crash
 \end{verbatim}
@@ -807,7 +800,7 @@ machines for other instructions in the crashing thread.  In
 particular, the machine produced for instruction \verb|F| will be:
 
 \begin{verbatim}
-if (BadAddr (load(load(reg(rsp)@F)@G) + 48))
+if BadAddr (load(load(rsp@F)@G)+48)
  then crash
  else no-crash
 \end{verbatim}
@@ -816,7 +809,7 @@ As this accesses both registers and the stack, it can be specialized,
 producing two new machines:
 
 \begin{verbatim}
-if (BadAddr (load(some_variable@G) + 48))
+if BadAddr (load(some_variable@G)+48)
  then crash
  else no-crash
 \end{verbatim}
@@ -824,7 +817,7 @@ if (BadAddr (load(some_variable@G) + 48))
 and
 
 \begin{verbatim}
-if (BadAddr (load(fallback_structure@G) + 48))
+if BadAddr (load(fallback_structure@G)+48)
  then crash
  else no-crash
 \end{verbatim}
