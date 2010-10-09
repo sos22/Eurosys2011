@@ -383,14 +383,8 @@ instructions which perform multiple loads can be converted into loops,
 and we do so; we discuss the handling of loops in section
 \ref{sect:branch_instrs}.
 
-In the running example\editorial{phrase}, the state machine
-\begin{verbatim}
-if (BadAddr (reg(rdx) + 48))
- then crash
- else no-crash
-\end{verbatim}
-
-at \verb|H| will be transformed to
+For example, the previously-derived state machine for instruction
+\verb|H| of figure \ref{fig:broken_privatize} will be transformed to
 
 \begin{verbatim}
 if (BadAddr (load(reg(rcx)@G) + 48))
@@ -438,14 +432,6 @@ to determine which instructions subsequently loaded the stored value.
 If any of those loads appear in the current state machine then we
 assume that they will load the value stored by this instruction,
 effectively eliminating them and thus simplifying the machine.
-
-This is obviously an unsound heuristic, and will occasionally produce
-incorrect predictions, which will lead to an incorrect
-characterisation of the program's behavior.\editorial{It kind of looks
-  like this assumes a static data flow graph, but it actually
-  sometimes works even when you don't have that.  It's also quite a
-  bit stronger than just only resolving constant offsets from rsp, but
-  explaining why is kind of time consuming.}
 
 \subsubsection{Branch instructions}
 \label{sect:branch_instrs}
@@ -594,6 +580,15 @@ This is important, as it gives the approach some tolerance for changes
 in the details of how a bug is reproduced.\editorial{Kind of needs
   rephrasing.  It's a pretty important point, as well.}
 
+This example also illustrates that the local stack heuristic is not
+simply equivalent to assuming a completely static data flow graph, but
+can correctly encode some simple control-flow dependencies.  This is
+because stack resolution is interleaved with control flow discovery
+and so naturally respects the programs flow of control.  Separating
+the two processes into independent phases would lose this property,
+and result in far less accurate characterizations.\editorial{Also
+  important, and also badly described.}
+
 \section{Investigating the multi-threaded behavior of the program}
 \label{sect:multi_threading}
 
@@ -627,13 +622,12 @@ meaningful results.  This is complicated by the way in which the state
 machines combine both static and dynamic information, and so matching
 either the specific dynamic instruction or the static instruction
 pointer for which the machine was derived is likely to be
-insufficient\editorial{Justification?}.  Our approach is to consider
-two points to match if both the instruction pointer and the call stack
-match.  This is equivalent to saying that the instructions match if
-they would have had the same instruction pointer had every function on
-the stack been inlined into its caller, which meshes
-nicely\editorial{don't like that phrasing} with our approach of
-inlining every encountered function during CFG construction.
+insufficient.  Our approach is to consider two points to match if both
+the instruction pointer and the call stack match.  This is equivalent
+to saying that the instructions match if they would have had the same
+instruction pointer had every function on the stack been inlined into
+its caller, which reflects our approach of inlining every encountered
+function during CFG construction.
 
 Next, the state machines are specialized to particular points in the
 log.  This involves replaying the log a third time and, whenever the
@@ -641,33 +635,37 @@ state machine is applicable, constructing a new state machine which
 has appropriate constants substituted in for the values of registers
 and accesses to the local stack\footnote{This may result in the
   construction of duplicate machines, which are eliminated in the
-  obvious way.}.  This effectively factors out of the effects of
+  obvious way.}.  This effectively factors out the effects of
 thread-local computation, converting each state machine into a set of
 state machines which individually depend only upon the content of
 memory locations which had previously been flagged as relevant.
 
-These specialized state machines are then each individually used to
-partition the relevant address log into crashing and non-crashing
-regions\editorial{How?  Kind of obvious, but might be worth
-  explaining.}. The specialized partitions are then used to derive an
-equivalent partition for the non-specialized machines:
+These specialized state machines are then evaluated at each store to a
+relevant address, partitioning the log into regions which crash (if
+the machine evaluates to \verb|crash| or depends on an inaccessible
+memory location) or do not crash (if it evaluates to \verb|no-crash|).
+These regions indicate where the specialized machines (and hence,
+hopefully, the dynamic instructions from which they were derived)
+would have been safe if they had been executed atomically.  Any
+machines which always predict the same result, whether \verb|crash| or
+\verb|no-crash|, are then discarded, as they are unlikely to be
+helpful.
 
-\begin{itemize}
-\item If a specialized machine always predicts a crash or always
-  predicts no crash, it is discarded.
-\item If every specialized machine for a given non-specialized one
-  predicted \verb|no-crash|, the non-specialized prediction is
-  \verb|no-crash|.
-\item Likewise, if every specialized machine predicted \verb|crash|,
-  the non-specialized prediction is also \verb|crash|.
-\item If the specialized machines disagree, or if one of the machines
-  attempts to reference an inaccessible memory location, the region is
-  marked as unknown in the non-specialized partition.
-\end{itemize}\editorial{...}
-
-If the resulting schedule does not contain any \verb|crash| regions,
-or does not contain any \verb|no-crash| regions, the original
-unspecialized state machine is discarded as unhelpful.
+The specialized partitionings are then combined to produce a
+partitioning for the original unspecialized state machine: wherever
+all of the specialized partitionings make the same prediction, the
+unspecialized partition will have the same prediction, and wherever
+they differ the unspecialized partition will make no prediction at
+all.  If the resulting schedule makes no \verb|crash| predictions or
+no \verb|no-crash| ones then the original unspecialized state machine
+is discarded as unhelpful.  In this way SLI is able to ignore
+thread-local computation without the risk of also ignoring some
+scheduling-dependent work\editorial{Rephrase}.  See section
+\ref{sect:final_example} for a situation in which specialization
+allows us to derive an additional potential fix, and the discussion of
+the \verb|twovar| test case in section \ref{sect:bug_descr} for one in
+which the specialized predictions would have produced an incorrect fix
+if they had been used without the recombination step.
 
 \subsection{Generating candidate fixes}
 \label{sect:gen_fix}
@@ -744,6 +742,7 @@ to pathological performance, and so the exact choice of prioritisation
 heuristic does not appear to be critical.
 
 \subsection{Example}
+\label{sect:final_example}
 
 Our earlier example derived the state machine:
 
@@ -803,8 +802,8 @@ This would fix the bug, and will be suggested by SLI.
 
 This is not the complete story, however\editorial{Don't like that
   phrasing}, as state machine generation will also have produced
-machines for other instructions in the crashing thread.  In particular,
-the machine for instruction \verb|F| will look like this:
+machines for other instructions in the crashing thread.  In
+particular, the machine produced for instruction \verb|F| will be:
 
 \begin{verbatim}
 if (BadAddr (load(load(reg(rsp)@F)@G) + 48))
@@ -1016,43 +1015,18 @@ gains.
 \end{figure*}
 
 Figure \ref{fig:phasedistribution} shows how the time taken is
-distributed between the phases of the fix generation process.  These
-phases are, in brief:
-
-\begin{itemize}
-\item Reading an initial snapshot of the program's memory.  For most
-  of these tests, this snapshot is the program's initial state,
-  immediately after it is created by the kernel.  For
-  \verb|thunderbird|, the snapshot was taken after the test program
-  had completed its initialization phase, so as to reduce the size of
-  the generated log file.
-\item Determining the aliasing pattern for stack resolution.  This
-  involves walking over the log file, recording all of the stack
-  accesses by the crashed thread and using this to determine which
-  stores provide data for which loads.  This is used as input to the
-  local stack resolution heuristic, described in section
-  \ref{sect:resolvestack}.
-\item Building the initial state machines, using the backtracking
-  algorithm described in section \ref{sect:build_state_machines}.
-\item Discovering relevant addresses, building logs of those
-  addresses, and specializing the state machines, as described in
-  section \ref{sect:multi_threading}.
-\item Finally, combining the specialized machines and address logs to
-  produce a set of potential fixes, using the algorithm described in
-  section \ref{sect:gen_fix}.
-\end{itemize}\editorial{This doesn't really belong here; maybe move into one of the implementation sections.}
-
-Two main observations can be drawn from the figure.  First,
-constructing the state machines is very quick for all of these tests,
-and is barely visible in the graph.  This is reassuring, and suggests
-that the algorithm is able to discard parts of the program's execution
-which are not relevant to the observed crash quickly, so should be
-able to scale up to more complicated bugs in a reasonably
-straightforward way\editorial{Not sure I believe that}.  Second, for
-the very long-running \verb|thunderbird| test the runtime is
-completely dominated by the phases which involve replaying the log.
-This is unsurprising, as it has by far the largest logfile, reflecting
-the greater complexity of the buggy program.
+distributed between the phases of the fix generation process.  Two
+main observations can be drawn from the figure.  First, constructing
+the state machines is very quick for all of these tests, and is barely
+visible in the graph.  This is reassuring, and suggests that the
+algorithm is able to discard parts of the program's execution which
+are not relevant to the observed crash quickly, so should be able to
+scale up to more complicated bugs in a reasonably straightforward
+way\editorial{Not sure I believe that}.  Second, for the very
+long-running \verb|thunderbird| test the runtime is completely
+dominated by the phases which involve replaying the log.  This is
+unsurprising, as it has by far the largest logfile, reflecting the
+greater complexity of the buggy program.
 
 \begin{figure*}
 \includegraphics{timing/without_replay.pdf}
@@ -1108,7 +1082,7 @@ For these tests, our only semantic knowledge is:
 this to make races reproduce more easily.
 
 \subsection{Description of test bugs}
-
+\label{sect:bug_descr}
 \verb|toctou|, a simple two-thread time-of-check, time-of-use race.
 In this test, one thread loops incrementing a counter, while another
 thread repeatedly issues pairs of loads of the counter and asserts
@@ -1127,10 +1101,10 @@ protecting the two loads in the second thread and four singleton
 instructions each of which protects a single store in the other
 thread.  This correctly eliminates the bug.
 
-This test is illustrated the effect of state machine specialization.
-For the instructions between the two loads, the initial
-single-threaded state machine generation process will produce a state
-machine similar to this:
+This test illustrates the effect of state machine specialization.  For
+the instructions between the two loads, the initial single-threaded
+state machine generation process will produce a state machine similar
+to this:
 
 \begin{verbatim}
 if reg(rax) != load(global2@l2)
@@ -1155,8 +1129,16 @@ if 7 != load(global2@l2)
 
 There are no points in the program's execution at which both machines
 will predict \verb|no-crash|, and so the original unspecialized
-machine is discarded as uninteresting.\editorial{Not sure where I'm
-  going with this one...}
+machine is discarded as uninteresting.  If the specialized predictions
+had not been recombined they would have predicted that the relevant
+instruction is safe if \verb|global2| is, respectively, \verb|5| or
+\verb|7|, and hence produced suggested fixes which synchronized the
+load at \verb|l2| against the stores to \verb|global2| independently
+of any accesses to \verb|global1|.  Neither of these fixes would
+sufficient to fix the bug, and combining them directly would have
+meant that \verb|l2| could not occur at any point in the program's
+execution, and so the second thread would not be able to make any
+progress at all.
 
 \verb|publish|, a broken implementation of the publish pattern.  In
 this pattern, a structure is initialised by one thread and then
@@ -1340,9 +1322,13 @@ the process of generating a fix takes much longer: nearly eighty
 minutes, rather than a few seconds.  The vast bulk (more than 99\%) of
 this time is spent in the replay engine, reflecting the greater
 complexity of the target program and the fact that the bug simply took
-longer to reproduce, both of which lead to much larger log files.  It
-seems likely that a more intelligent replay strategy could
-significantly reduce this cost.
+longer to reproduce, both of which lead to much larger log files.
+Note also that the log in this case starts at a snapshot of the
+program's state taken after it had completed initialisation, whereas
+the other test cases start at the very first instruction in the
+program; without this, the disparity would be even larger.  It seems
+likely that a less na\"ive replay system could somewhat reduce the
+time spent performing replay.
 
 \subsection{Effects of backtracking further}
 \label{sect:eval:backtrack}

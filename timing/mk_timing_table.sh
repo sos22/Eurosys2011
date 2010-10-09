@@ -3,10 +3,10 @@
 histogram=timings.dat
 tmp=$(mktemp)
 
-echo '"" "Reading initial snapshot" "Determining aliasing pattern for stack resolution" "Building state machines" "Discovering relevant addresses" "Collecting logs of relevant addresses" "Specialising state machines" "Constructing suggested fixes"' > $histogram
-echo '"" "Standard deviation" "Determining aliasing pattern for stack resolution" "Building state machines" "Discovering relevant addresses" "Collecting logs of relevant addresses" "Specialising state machines" "Constructing suggested fixes"' > errors.dat
+echo '"" "Reading initial snapshot" "Finding access pattern for stack resolution" "Building state machines" "Discovering relevant addresses" "Collecting logs of relevant addresses" "Specialising state machines" "Constructing suggested fixes"' > $histogram
+echo '"" "Standard deviation" "" "" "" "" "" ""' > errors.dat
 echo '"" "Reading initial snapshot" "Building state machines" "Generating fixes" "Other"' > time_without_replay
-echo '"" "Standard deviation" "Building state machines" "Generating fixes" "Other"' > errors.time_without_replay.dat
+echo '"" "Standard deviation" "" "" ""' > errors.time_without_replay.dat
 
 cntr=0
 for x in toctou twovar publish privatize glibc thunderbird
