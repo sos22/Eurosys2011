@@ -321,22 +321,22 @@ The result of this initial analysis is generally a single-node state
 machine which captures the reason for the crash using only information
 which is available at the instruction on which the crash occurred.
 For example, consider the program shown in figures
-\ref{fig:example_thread_1} and \ref{example_thread_2}, which is
-intended to be a broken instance of the common structure privatization
-pattern\needCite{} in an x86-like assembly language.  Thread 2
-initializes (\verb|V|) and publishes (\verb|W|) a structure, does some
-unrelated work, and then attempts to privatize (\verb|X|) and
-de-initialise (\verb|Y|) the structure.  Meanwhile, thread 1 loads the
-pointer published by thread 2 (\verb|A|), checks whether it is valid
-(\verb|B|, \verb|C| and \verb|D|), and, if it is not, loads a fallback
-version (\verb|E|), before attempting to use it (\verb|F| through
-\verb|J|).  This will lead to a crash if instructions \verb|X| and
-\verb|Y| occur between instructions \verb|A| and \verb|H|, as in that
-case \verb|rdx| will contain a bad pointer at instruction \verb|J|,
-which will cause an immediate crash.  The proximal cause is then
-simply \verb|if (BadAddr reg(rdx)) then crash else no-crash|
-(translating the state machine into text in the obvious way), and is
-valid at the start of instruction \verb|J|.
+\ref{fig:broken_privatize}, which is intended to be a broken instance
+of the common structure privatization pattern\needCite{} in an
+x86-like assembly language.  Thread 2 initializes (\verb|V|) and
+publishes (\verb|W|) a structure, does some unrelated work, and then
+attempts to privatize (\verb|X|) and de-initialise (\verb|Y|) the
+structure.  Meanwhile, thread 1 loads the pointer published by thread
+2 (\verb|A|), checks whether it is valid (\verb|B|, \verb|C| and
+\verb|D|), and, if it is not, loads a fallback version (\verb|E|),
+before attempting to use it (\verb|F| through \verb|J|).  This will
+lead to a crash if instructions \verb|X| and \verb|Y| occur between
+instructions \verb|A| and \verb|H|, as in that case \verb|rdx| will
+contain a bad pointer at instruction \verb|J|, which will cause an
+immediate crash.  The proximal cause is then simply
+\verb|if (BadAddr reg(rdx)) then crash else no-crash| (translating the
+state machine into text in the obvious way), and is valid at the start
+of instruction \verb|J|.
 
 \subsection{Deriving earlier state machines}
 This proximal cause is accurate but not, by itself, sufficient to
@@ -738,8 +738,8 @@ affect whether or not the program crashes, and so it is not considered
 relevant for these purposes.
 
 Assuming that the only stores to relevant addresses are those
-indicated in figure \label{fig:broken_privatize}, the relevant store
-log will then consist a sequence of entries similar to these:
+indicated in figure \ref{fig:broken_privatize}, the relevant store log
+will then consist a sequence of entries similar to these:
 
 \begin{verbatim}
 V.1 &some_structure -> some_variable
