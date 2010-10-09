@@ -163,9 +163,6 @@ definition.  It is in general extremely difficult to avoid this kind
 of issue without detailed semantic knowledge of the desired behavior
 of the application, and we do not attempt it here.
 
-\editorial{Analogy: SLI is static analysis directed at a particular
-  bug and using the dynamic trace as an oracle.  Worth including?}
-
 \section{Capturing the bug}
 
 Before SLI starts, the bug to be fixed must first be captured using a
@@ -258,7 +255,7 @@ are more likely to be directly relevant to it.  Second, the time taken
 by some of the analysis steps involved in producing a state machine
 grow more than linearly in the distance to the crash, and so more
 aggressive simplification is necessary in order to keep the analysis
-tractable.\editorial{...}
+tractable.
 
 \subsection{The proximal cause}
 The first phase of our algorithm is to locate the first point in the
@@ -1318,11 +1315,14 @@ programmer-provided assistance.
 
 \verb|thunderbird| is Mozilla bug number 391259\editorial{Cite bug
   tracker?}, a simple time-of-check, time-of-use race in the IMAP
-client component of Thunderbird, an e-mail client.  The race is
-between \verb|nsImapProtocol::CloseStreams()|, which runs on the UI
-thread, and \verb|nsImapProtocol::ProcessCurrentURL()|, which runs in
-an IMAP worker thread.  The relevant parts of the program are as
-follows:
+client component of Thunderbird, an e-mail client.  We modified
+Thunderbird to include some additional debugging messages and used a
+custom scheduler in order to make the bug reproduce more readily; this
+test is otherwise as it would have been encountered in the
+wild\editoral{...}.  The race is between
+\verb|nsImapProtocol::CloseStreams()|, which runs on the UI thread,
+and \verb|nsImapProtocol::ProcessCurrentURL()|, which runs in an IMAP
+worker thread.  The relevant parts of the program are as follows:
 
 \begin{verbatim}
 void nsImapProtocol::CloseStreams()
