@@ -67,7 +67,8 @@ plot 'timings.dat' using 2:xtic(1) lt rgb "#eeeeee", 'timings.dat' using 3:xtic(
 
 set output "without_replay.eps"
 set yrange [0:5]
-plot 'time_without_replay' using 2:xtic(1) lt rgb "#eeeeee", 'time_without_replay' using 3:xtic(1) lt rgb "#aaaaaa", 'time_without_replay' using 4:xtic(1) lt "#888888", 'time_without_replay' using 5:xtic(1) lt rgb "#111111", 'errors.time_without_replay.dat' with errorbars
+set boxwidth 0.75
+plot 'time_without_replay' using 2:xtic(1) lt rgb "#eeeeee", 'time_without_replay' using 3:xtic(1) lt rgb "#aaaaaa", 'time_without_replay' using 4:xtic(1) lt rgb "#888888", 'time_without_replay' using 5:xtic(1) lt rgb "#111111", 'errors.time_without_replay.dat' with errorbars
 EOF
 
 rm $tmp

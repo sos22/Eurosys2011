@@ -496,7 +496,7 @@ captured execution.  This approximation is often imperfect, but, as
 discussed in section \ref{sect:inaccuracies}, such imperfections will
 not always prevent SLI from generating at least a partial fix for the
 bug, and hence can usually be tolerated in exchange for the
-dramatically simpler analysis which they allow.\editorial{...}
+dramatically simpler analysis which they allow.
 
 \begin{figure}
 \includegraphics[width=83mm]{diagrams/eg_cfg_start.pdf}
@@ -516,7 +516,13 @@ stack location.  Assuming that this store was ever executed in the
 captured execution, local stack resolution will predict that the load
 at \verb|F| will load the stored value, and so the state machine
 assigned to \verb|E| will be
-\verb|if (BadAddr (load(fallback_structure@G) + 48)) then crash else no-crash|.
+
+\begin{verbatim}
+if (BadAddr (load(fallback_structure@G) + 48))
+ then crash
+ else no-crash
+\end{verbatim}
+
 Instruction \verb|D| now has all of its successors, and so we can
 now derive a state machine for it.  This will be:
 
@@ -729,13 +735,12 @@ else
   else no-crash
 \end{verbatim}
 
-The relevant addresses list will contain \verb|global1|,
-\verb|fallback_structure|\editorial{probably}, and whatever
-\verb|global1| points at, which, in this example, will be
-\verb|some_variable|.  Note that the load in instruction \verb|J| is
-\emph{not} represented in this list: the value which it loads does not
-affect whether or not the program crashes, and so it is not considered
-relevant for these purposes.
+The list of relevant addresses will contain \verb|global1|,
+\verb|fallback_structure|, and whatever \verb|global1| points at,
+which, in this example, will be \verb|some_variable|.  Note that the
+load in instruction \verb|J| is \emph{not} represented in this list:
+the value which it loads does not affect whether or not the program
+crashes, and so it is not considered relevant for these purposes.
 
 Assuming that the only stores to relevant addresses are those
 indicated in figure \ref{fig:broken_privatize}, the relevant store log
@@ -1044,12 +1049,6 @@ the various phases ignoring the time taken to replay the log file.
 \label{fig:r4}
 \end{figure*}
 
-Things to look at:
-
--- Maybe look at how much memory we need?  Tricky because of the
-garbage collector.  Could maybe do a graph of memory used versus time
-taken?  It's going to be very implementation-specific, though.
-
 One important parameter to the system is how far to backtrack through
 the crashed thread.  For implementation reasons, our prototype will
 always backtrack to a branch instruction, and for the purposes of this
@@ -1162,14 +1161,14 @@ is the same as the example program in figure
 \ref{fig:broken_privatize}, which has already been extensively
 discussed.
 
-\verb|glibc| This is a kernel of glibc bug 2644\editorial{cite bug
-  tracker}, which affected versions of glibc from \editorial{...}  to
-\editorial{...} and could lead to a crash if multiple threads were
-shut down at the same time.  Somewhat simplified, the code looked like
-this:
+\verb|glibc| This is a kernel of glibc bug 2644 \cite{glibc2644},
+which affected versions of glibc up to 2.5 and could lead to a crash
+if multiple threads were shut down at the same time.  Somewhat
+simplified, the code looked like this:
 
 \begin{verbatim}
-_Unwind_ForcedUnwind() {
+_Unwind_ForcedUnwind()
+{
     if (libgcc_s_forcedunwind == NULL)
         pthread_cancel_init();
     libgcc_s_forcedunwind();
@@ -1192,7 +1191,8 @@ code actually executed corresponded to\footnote{Unfortunately, only
   prevented us from testing with the real bug.}:
 
 \begin{verbatim}
-_Unwind_ForcedUnwind() {
+_Unwind_ForcedUnwind()
+{
 1:  l = libgcc_s_forcedunwind;
 2:  if (l == NULL) {
 3:      if (done_init) {
