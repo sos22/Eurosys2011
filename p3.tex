@@ -354,8 +354,14 @@ before the instruction was executed.
 In the example, the preceding instruction is \verb|add $48, %rdx|.
 This transforms \verb|rdx| into \verb|rdx+48|.  Applying this
 transformation to the proximal cause of the crash produces
-\verb|if (BadAddr (reg(rdx) + 48)) then crash else no-crash|, which is
-then valid at the start of instruction $H$.  Other simple
+
+\begin{verbatim}
+if (BadAddr (reg(rdx) + 48))
+ then crash
+ else no-crash
+\end{verbatim}
+
+This is valid at the start of instruction \verb|H|.  Other simple
 register-to-register arithmetic instructions can be handled in the
 same way, and hence the crash reason can be backtracked across any
 sequence of such instructions.
@@ -377,12 +383,29 @@ instructions which perform multiple loads can be converted into loops,
 and we do so; we discuss the handling of loops in section
 \ref{sect:branch_instrs}.
 
-In the running example, the state machine
-\verb|if (BadAddr (reg(rdx) + 48)) then crash else no-crash| at
-\verb|H| will be transformed to
-\verb|if (BadAddr (load(reg(rcx)@G) + 48)) then crash else no-crash|,
+In the running example\editorial{phrase}, the state machine
+\begin{verbatim}
+if (BadAddr (reg(rdx) + 48))
+ then crash
+ else no-crash
+\end{verbatim}
+
+at \verb|H| will be transformed to
+
+\begin{verbatim}
+if (BadAddr (load(reg(rcx)@G) + 48))
+ then crash
+ else no-crash
+\end{verbatim}
+
 at \verb|G|, and then to
-\verb|if (BadAddr (load(load(reg(rsp)@F)@G) + 48)) then crash else no-crash|,
+
+\begin{verbatim}
+if (BadAddr (load(load(reg(rsp)@F)@G) + 48))
+ then crash
+ else no-crash
+\end{verbatim}
+
 at \verb|F|.
 
 The state machines must also model the effects of stores.  To do this,
@@ -538,7 +561,8 @@ else
   else no-crash
 \end{verbatim}
 
-Backtracking further will eventually produce this state machine:
+Backtracking further will eventually produce this state machine, valid
+at \verb|A|:
 
 \begin{verbatim}
 if load(global1@A) != 0
@@ -1097,7 +1121,7 @@ if reg(rax) != load(global2@l2)
 \end{verbatim}
 
 Where \verb|l2| is the load of the second global variable.  This
-can specialize in two ways:
+will specialize in two ways:
 
 \begin{verbatim}
 if 5 != load(global2@l2)
@@ -1191,8 +1215,8 @@ code actually executed corresponded to\footnote{Unfortunately, only
   prevented us from testing with the real bug.}:
 
 \begin{verbatim}
-_Unwind_ForcedUnwind()
-{
+  _Unwind_ForcedUnwind()
+  {
 1:  l = libgcc_s_forcedunwind;
 2:  if (l == NULL) {
 3:      if (done_init) {
@@ -1202,7 +1226,7 @@ _Unwind_ForcedUnwind()
 6:      }
 7:  }
 8:  l();
-}
+  }
 \end{verbatim}
 
 Our test is then to have two threads loop executing this:
@@ -1267,8 +1291,6 @@ void nsImapProtocol::CloseStreams()
   ...
   if (m_transport)
   {
-      // make sure the transport closes (even if someone is still indirectly
-      // referencing it).
       m_transport->Close(NS_ERROR_ABORT);
       m_transport = nsnull;
   }
@@ -1280,9 +1302,10 @@ void nsImapProtocol::CloseStreams()
 PRBool nsImapProtocol::ProcessCurrentURL()
 {
   ...
-  // disable timeouts before caching connection.
   if (m_transport)
-    m_transport->SetTimeout(nsISocketTransport::TIMEOUT_READ_WRITE, PR_UINT32_MAX);
+    m_transport->SetTimeout(
+      nsISocketTransport::TIMEOUT_READ_WRITE,
+      PR_UINT32_MAX);
   ...
 }
 \end{verbatim}
