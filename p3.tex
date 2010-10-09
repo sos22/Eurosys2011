@@ -603,8 +603,10 @@ suggest some potentially useful synchronizations.  In principle, this
 stage can run immediately as soon as the first state machine has been
 derived, but it is possible to derive a significant performance
 advantage by grouping machines into small batches and hence reducing
-the number of times which the log file has to be
-replayed.\editorial{Evidence?  Also, so what?}
+the number of times which the log file has to be replayed.  As we show
+in section \ref{sect:evaluation}, replaying the log file contributes a
+large proportion of the entire cost of generating a fix, and so this
+is a very worthwhile optimization.
 
 Our implementation of this strategy has several stages.  First, we
 determine which memory locations are relevant to the state machines in
@@ -726,14 +728,13 @@ machines are available, and it is then necessary to select an
 appropriate one to instantiate into a binary patch.  We use a very
 simple cost heuristic to do so: the cost of a fix is given by $U.n_u +
 C_s.n_s + {\sum_{i}}s_i$ where $n_u$ is the number of points in the
-log where we are unable to produce a crash prediction\editorial{Less
-  well-defined than it sounds...}, $n_s$ is the total number of
-critical sections, $s_i$ is the number of accesses in the $i$th
-critical section, and $C_s$ and $U$ are constants reflecting the cost
-of introducing a new empty critical section and of only partially
-fixing the bug, respectively.  Our prototype sets $U=1000$ and
-$C_s=10$, strongly preferring fixes for which all unsafe states can be
-eliminated and weakly preferring fixes with a smaller number of
+log where we are unable to produce a crash prediction, $n_s$ is the
+total number of critical sections, $s_i$ is the number of accesses in
+the $i$th critical section, and $C_s$ and $U$ are constants reflecting
+the cost of introducing a new empty critical section and of only
+partially fixing the bug, respectively.  Our prototype sets $U=1000$
+and $C_s=10$, strongly preferring fixes for which all unsafe states
+can be eliminated and weakly preferring fixes with a smaller number of
 critical sections.
 
 In our evaluation, there are generally only a small number of possible
@@ -872,7 +873,8 @@ does not rely on programmer annotations (ignoring trivial systems
 which just pattern-match the buggy code against a library of common
 bugs and their standard fixes).  The extra flexibility gained by being
 applicable to arbitrary binaries makes this a reasonable
-trade-off.\editorial{Could make more of this.}
+trade-off.\editorial{Could make more of this, and maybe pull it a bit
+  earlier.}
 
 \subsection{Implementation details of the binary patcher}
 \label{sect:binpatch}
@@ -966,6 +968,7 @@ situations.
 We have not implemented this in our current prototype.
 
 \section{Evaluation}
+\label{sect:evaluation}
 
 \begin{table*}
 \begin{tabular}{lllllll}
