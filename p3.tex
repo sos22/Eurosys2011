@@ -119,7 +119,7 @@ overhead, and the process of generating the fix itself takes only a
 moderate amount of time (ranging from seconds in simple cases to a few
 hours for more complicated bugs).  SLI does not depend on programmer
 annotations or semantic knowledge of the underlying operating system
-or libraries, but can make use of such information when it is
+or libraries, but can make limited use of such information when it is
 available.
 
 Our approach consists of several key phases.  First, the bug must be
@@ -1067,8 +1067,7 @@ For these tests, our only semantic knowledge is:
 
 -- Calling \verb|__assert_fail| always leads to a crash
 
--- The \verb|sleep| function is a semantic no-op.  We occasionally use
-this to make races reproduce more easily.\editorial{moo}
+-- Receiving a page fault is bad.
 
 \subsection{Description of test bugs}
 \label{sect:bug_descr}
@@ -1126,8 +1125,8 @@ load at \verb|l2| against the stores to \verb|global2| independently
 of any accesses to \verb|global1|.  Neither of these fixes would
 sufficient to fix the bug, and combining them directly would have
 meant that \verb|l2| could not occur at any point in the program's
-execution, and so the second thread would not be able to make any
-progress at all.
+execution, so the second thread would not be able to make any progress
+at all.
 
 \verb|publish|, a broken implementation of the publish pattern.  In
 this pattern, a structure is initialised by one thread and then
@@ -1441,26 +1440,30 @@ overhead.
 
 \section{Future work}
 
-One major weakness of this approach is that the program to be fixed
-must be first be observed to crash, and so SLI, as presented here,
-cannot be applied to synchronisation bugs which lead to incorrect
-behavior other than a crash.  Even when the bug does lead to a crash,
-we rely on it leading to a crash quickly\editorial{Quantify?}, as
-otherwise the analysis required becomes prohibitively expensive.  This
-could be ameliorated somewhat using programmer- or user-provided
-correctness specifications, which would allow a richer class of bugs
-to be fixed, but these are likely to be difficult to obtain.
-Alternatively, a scheme such as Daikon\cite{Ernst2007} or
-DIDUCE\cite{Hangal2002} could be used to derive these specifications
-automatically by observing the program's execution.  If we then
-observed an inferred invariant shortly before SLI is invoked then that
-would provide some potentially useful hints as to the nature and cause
-of the error, allowing the system to be applied in many more
-situations.  We intend to investigate this idea more fully in future.
+There are a number of potential extensions of this work, beyond the
+obvious ones of broadening the evaluation and improving performance.
+At the highest level, this approach combines the use of static
+analysis, which considers many possible executions and produces
+general fixes, and dynamic analysis, which considers only the observed
+execution and produces much more targeted fixes.  We do not claim to
+have found the optimal balance between these two approaches, or even
+that a global optimum exists; better characterizing the trade-offs
+involved is likely to suggest some useful improvements.
 
-\editorial{Optimizations, use of semantic knowledge, balancing use of
-  dynamic oracle against static analysis.  Maybe mention deadlocks
-  again?}
+There is a similar balance to be struck between attempting to be
+completely generic and using semantic knowledge, both of the program
+and of its libraries.  At present, we make very little use of this
+information, and so our implementation is generic across a wide range
+of applications but struggles with more complicated bugs.  Carefully
+incorporating more semantic information, and providing a generic way
+for programmers to introduce their own semantic models, might improve
+our ability to produce useful, performant fixes.  One particularly
+intriguing approach would be to combine SLI with an invariant
+inference scheme such as Daikon\cite{Ernst2007} or
+DIDUCE\cute{Hangal2002}, which would allow us to obtain such semantic
+information compromising SLI's current ability to run on almost
+arbitrary unmodified binaries.  We intend to investigate this idea
+more fully in the future.
 
 \section{Conclusions}
 
