@@ -657,9 +657,9 @@ heuristic does not appear to be critical.
 \label{sect:final_example}
 
 Our earlier example derived the state machine shown in figure
-\ref{fig:state_machines_instr_a} for the program shown in
+\ref{fig:state_machines_instr_a} for the program shown in figure
 \ref{fig:broken_privatize}.  The list of relevant addresses for this
-state machine will contain \verb|global1|, \verb|fallback| and
+state machine will be \verb|global1|, \verb|fallback| and
 \verb|variable1|.  Note that the load in instruction \verb|J| is
 \emph{not} represented in this list: the value which it loads does not
 affect whether or not the program crashes, and so it is not considered
@@ -733,8 +733,8 @@ entire machine is subject to constant folding, producing the trivial
 machine \verb|no-crash|.  It is therefore discarded.  The first
 machine, however, predicts a crash whenever \verb|variable1| contains
 something which is not a valid pointer, which occurs from \verb|Y.1|
-to \verb|V.2| in the store log (and subsequent repeats).  This
-suggests an alternative fix with two critical sections: one
+to \verb|V.2| in the store log (and subsequently as thread 2 loops).
+This suggests an alternative fix with two critical sections: one
 single-instruction critical section covering instruction \verb|G| in
 thread 1, and a second covering \verb|Y| to \verb|V| in thread 2 (the
 second section will wrap around the loop, which somewhat complicates
@@ -821,15 +821,13 @@ indicates a bug.  If the use-after-free analysis mentioned in section
 will never deliberately use memory after passing it to the \verb|free|
 function.  There exist programs for which some or all of these
 assumptions will be false, but they appear to be reasonably rare, and
-so these assumptions should not significantly limit the approaches
-applicability.
-
-The current implementation provides some facilities for programmers to
-extend this knowledge with additional assumptions, such as flagging
-functions other than \verb|__assert_fail| as indicating bugs or
-applying other dynamic analyses when deriving the proximal cause, but
-these are at presented rather limited.  We intend to expand them
-further in future.\editorial{Wording doesn't really work very well.}
+so these assumptions should not significantly limit the approach's
+applicability.  The current implementation provides some facilities
+for programmers to extend this knowledge with additional assumptions,
+such as flagging functions other than \verb|__assert_fail| as
+indicating bugs or applying other dynamic analyses when deriving the
+proximal cause.  We intend to expand these further in
+future.\editorial{Wording doesn't really work very well.}
 
 \section{Deadlocks}
 \label{sect:deadlocks}
@@ -837,12 +835,11 @@ further in future.\editorial{Wording doesn't really work very well.}
 There is a risk that introducing additional synchronisation into the
 program will itself introduce a deadlock.  We mitigate the issue
 slightly by using a timeout on our introduced locks, so that deadlocks
-at least resolve themselves in bounded time, but this can lead to
-extremely poor performance or incomplete fixing of bugs.  This could
-be avoided in some cases by performing additional static analysis to
-select critical sections which are less likely to lead to deadlocks,
-at the expense of potentially not being able to find any safe fix at
-all.
+at least resolve themselves in bounded time, but this can lead to poor
+performance or incomplete fixing of bugs.  This could be avoided in
+some cases by performing additional static analysis to select critical
+sections which are less likely to lead to deadlocks, at the expense of
+potentially not being able to find any safe fix at all.
 
 Another possible approach would be to integrate with a deadlock
 immunity system such as Dimmunix\cite{Jula2008}, detecting and fixing
