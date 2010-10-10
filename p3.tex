@@ -62,8 +62,8 @@ Speculative Lock Insertion, or SLI, as one possible such tool.  Using
 a combination of static and dynamic analysis techniques, SLI is able
 to automatically characterize and then fix a useful class of
 synchronization bugs, starting from a reproduction of the bug and the
-program binary.  We demonstrate the techniques effectiveness using
-both artificial and real bugs, and discuss some of the trade-offs
+program binary.  We demonstrate the technique's effectiveness using
+both real and artificial bugs, and discuss some of the trade-offs
 necessary in order to implement it.
 
 \end{abstract}
@@ -83,43 +83,40 @@ specializations.
 
 \section{Introduction}
 
-There is a well-established trend in software engineering to make
-greater use of multiple threads, driven largely by the increasing
-availability of multi-processor systems and multi-core processors.
-While potentially paying large dividends in improved responsiveness,
-throughput, and power consumption, multi-threaded programming has an
-unfortunate tendency to lead to very subtle bugs.  Even worse, these
-bugs are often highly dependent on the low-level details of the
-hardware on which the software is being run, which can often lead to
-bugs which only reproduce on some small subset of computers.  This
-makes testing for these bugs extremely difficult, so they are more
-likely than other kinds of bugs to remain undetected in shipped
-software, and also complicates the process of developing a fix, and so
-once detected they remain unfixed for much longer.
+The increasing availability of multi-core and multi-processor systems
+is driving a trend towards software with a greater degree of
+parallelism.  While potentially paying dividends in improved
+responsiveness, throughput, and power consumption, multi-threaded
+programming has an unfortunate tendency to lead to very subtle bugs.
+Even worse, these bugs are often dependent on the low-level details of
+the hardware on which the software is being run, and so can be hard to
+reproduce on any but a small subset of available computers.  This
+makes testing for these bugs difficult, so they are more likely than
+other kinds of bugs to remain undetected in shipped software.  It can
+also complicates the process of developing a fix, and so once detected
+such bugs remain unfixed for much longer.
 
 A number of techniques have been proposed for reducing the likelihood
-of these multi-threading bugs, including transactional
-memory\cite{Shavit1997} and automatic parallelization\cite{Bacon1994}.
-These can be used to address these issues in new software, but there
-remains a substantial body of existing programs using the legacy
-shared-memory model.  There is therefore a need for techniques which
-can ameliorate bugs found by end-users in programs developed with the
-currently widely-used shared memory model of concurrency.
+of these multi-threading bugs, such as transactional
+memory\cite{Shavit1997} or automatic parallelization\cite{Bacon1994}.
+These could potentially reduce the incidence of such bugs in new
+software, but it seems likely that they will not be universally
+deployed for some time, and so there is a need for techniques which
+can assist in fixing bugs in programs written using the currently
+widely-used shared memory model of concurrency.
 
 In this paper, we introduce SLI, or Speculative Lock Insertion, as one
 potential approach to this problem.  SLI automatically fixes
 synchronization bugs once they have been observed, given only the
 program binary and a reproduction of the bug, generating a modified
 binary whose behavior is identical to that of the original except that
-it no longer suffers from the bug.  The fixes so generated are safe,
-in the sense that any behavior which is possible with the fix applied
-would also have been possible, if sometimes unlikely, without the fix.
-Furthermore, the fixes will usually have very low performance
-overhead, and the process of generating the fix itself takes only a
-moderate amount of time (ranging from seconds in simple cases to a few
-hours for more complicated bugs).  SLI does not depend on programmer
-annotations or semantic knowledge of the program's intended behavior,
-but can make (limited) use of such information when it is available.
+it no longer suffers from the bug.  Furthermore, the fixes will
+usually have very low performance overhead, and the process of
+generating the fix itself takes only a moderate amount of time
+(ranging from seconds in simple cases to a few hours in more
+complicated ones).  SLI does not depend on programmer annotations or
+semantic knowledge of the program's intended behavior, but can make
+(limited) use of such information when it is available.
 
 Our approach consists of several key phases.  First, the bug must be
 captured under a deterministic replay system.  The exact details of
@@ -130,37 +127,32 @@ with the program binary so as to build a series of approximations of
 the parts of the program's behavior which are most closely relevant to
 the bug, in a process similar to program slicing\cite{Weiser1979}.
 These approximations can be used to predict whether executing a
-particular subset of a program's instructions atomically at a
-particular point in its execution would have led to a crash, and this
-can then be leveraged to determine what additional synchronization
-would have prevented the crash from happening.  This synchronization
-can then be added to the program automatically using a simple binary
-rewriter, and hence fix the bug.
+particular subset of a program's instructions atomically would have
+led to a crash, and this can then be leveraged to determine what
+additional synchronization would have prevented the crash from
+happening.  This synchronization can then be added to the program
+automatically using a simple binary rewriter, fixing the observed bug.
 
-This analysis is, unfortunately, both unsound and incomplete, in the
-sense that the ``fixed'' program will still sometimes crash, and the
-fix will sometimes eliminate executions which would have been safe.
-This is, to some extent, inevitable, as determining whether an
-arbitrary program will crash is incomputable, and to some extent an
-engineering trade-off: more powerful analyses could produce more
-accurate results, at the expense of greater computational complexity
-in deriving a fix.  We discuss this in more detail in later sections.
-
-In spite of this inaccuracy, the fixes generated by SLI are safe
-(ignoring bugs in the implementation), in the sense that any behavior
-which is possible with a fix applied is also possible when the fix is
-not applied, assuming a model of program execution in which
-instructions can be arbitrarily delayed.  This corresponds to the
-model presented to user-level applications by most non-realtime
-operating systems, including Linux and Windows, and so this weak model
-is likely to be sufficient for many pieces of widely used software.
-Of course, possible is not always the same thing as desirable, and so,
-for instance, it might be that a fix causes certain operations which
-would otherwise always succeed to always time out, and this might
-render the software unusable without being unsafe within this
-definition.  It is in general extremely difficult to avoid this kind
-of issue without detailed semantic knowledge of the desired behavior
-of the application, and we do not attempt it here.
+The fixes generated by SLI are safe (ignoring possible bugs in the
+implementation), even in the presence of most kinds of analysis
+errors, in the sense that any behavior which is possible with a fix
+applied is also possible when the fix is not applied, assuming a model
+of program execution in which instructions can be arbitrarily delayed.
+This corresponds to the model presented to user-level applications by
+most non-realtime operating systems, including Linux and Windows, and
+so this weak model is likely to be sufficient for many pieces of
+widely used software.  Of course, possible is not always the same
+thing as desirable, and so, for instance, it might be that a fix
+causes certain operations which would otherwise always succeed to
+always time out, and this might render the software unusable, without
+being unsafe within this definition.  Even identifying such
+time-dependent correctness constraints is difficult without semantic
+knowledge of the program's intended behavior, and automatically
+determining whether a fix causes some to be violated is even more
+challenging, and so it seems likely that this weakness will be
+inherent in any scheme which fixes bugs without reference to a
+manually-generated specification of the fixed program.\editorial{Not
+  very happy with that phrasing.}
 
 \section{Capturing the bug}
 
@@ -171,25 +163,26 @@ order to be feasible, and so we discuss them briefly here.
 
 The only requirement we place on the choice of DRS is that it must
 capture an execution sufficiently precisely that the relevant fragment
-of execution can later be replayed as many times as necessary at the
-accuracy of individual memory accesses.  This captured execution does
-not need to be precisely the same as the original crashing execution,
-but the more different it is the more likely it is that SLI will fix
-the wrong bug.  The most obvious way of capturing an execution, used
-in our prototype, is to simply record every single memory access
-issued by the program, which is effective but has extremely high
-overhead.  This could be reduced by using a more intelligent recording
-mechanism such as PRES\cite{Park2009} or ODR\cite{Altekar2009}, both
-of which record only a few critical events and discover the rest only
-when they are needed during replay.  This approach can reduce overhead
-to a level where it is sensible to run with recording enabled by
-default.  An extreme form of this approach is provided by
-ESD\cite{Zamfir2010}, which logs nothing at all and instead attempts
-to recreate the path to failure given just the state of the program at
-the time of the failure.  In a slightly different context, an
-automatic program exerciser such as CHESS\cite{Musuvathi2008} could be
-used to detect completely new bugs, which could then be passed to SLI
-to be automatically characterized and fixed.
+of execution can later be replayed as many times as necessary and
+produce the same sequence of memory accesses every time.  This
+captured execution does not need to be precisely the same as the
+original crashing execution, but the more different it is the more
+likely it is that SLI will fix the wrong bug.  The most obvious way of
+capturing an execution, used in our prototype, is to simply record
+every single memory access issued by the program, which is effective
+but has extremely high overhead.  This could be reduced by using a
+more intelligent recording mechanism such as PRES\cite{Park2009} or
+ODR\cite{Altekar2009}, both of which record only a few critical events
+and discover the rest only when they are needed during replay.  This
+can reduce overhead to a level where it is sensible to run with
+recording enabled by default.  An extreme form of this approach is
+provided by ESD\cite{Zamfir2010}, which logs nothing at all and
+instead attempts to recreate the path to failure given just the state
+of the program at the time of the failure.  In a slightly different
+context, an automatic program exerciser such as
+CHESS\cite{Musuvathi2008} could be used to detect completely new bugs,
+which could then be passed to SLI to be automatically characterized
+and fixed.\editorial{I want to use the phrase closed-loop here}
 
 \section{Deriving a single-threaded explanation of the bug}
 \label{sect:build_state_machines}
@@ -200,17 +193,12 @@ The result of this analysis is a series of acyclic state machines,
 corresponding to instructions executed by the crashed thread towards
 the end of its life, which can predict whether the thread will crash
 starting from that instruction given a particular state of memory and
-registers.
-
-\subsection{Inaccuracies in the state machines}
-\label{sect:inaccuracies}
-
-These machines are approximations of the program's real behavior,
-exhibiting both false positive and false negative errors, and can
-predict a crash where none will actually occur or safe execution when
-a crash is possible.  It would be possible to design an algorithm
-which avoids either or both of these classes of errors, but doing so
-would not necessarily be helpful.
+registers.  These machines are approximations of the program's real
+behavior, exhibiting both false positive and false negative errors,
+and can predict a crash where none will actually occur or safe
+execution when a crash is possible.  It would be possible to design an
+algorithm which avoids either or both of these classes of errors, but
+doing so would not necessarily be helpful.
 
 Consider false positives first, or errors where a state machine
 predicts a crash when none is possible.  This will cause the final fix
@@ -226,7 +214,8 @@ a bug, so that some possible manifestations remain possible.  This is
 indistinguishable from there simply being several bugs, and so,
 provided that the characterization is sufficiently accurate to predict
 a crash for the captured execution, false negatives do not prevent SLI
-from fulfilling its goal of fixing the observed crash.
+from fulfilling its goal of fixing the observed crash.\editorial{Feels
+  glib.}
 
 As such, a perfect characterization is not only difficult, but also
 unhelpful, and we do not attempt to produce one.  This allows us to
@@ -234,17 +223,17 @@ use much simpler analyses and to produce much simpler
 characterizations, which makes it more likely that the system will be
 able to generate a correct fix.
 
-When we do make approximations in the characterization, we attempt, as
-far as possible, to ensure that the captured execution remains
-possible, and apply coarser approximation to executions which are very
-different from the captured one.  The intuition behind this is that
-the captured execution is the only one which is known to be relevant
-to the bug, while all of the other paths discovered by static analysis
-are in some sense speculative: we do now know if they can ever happen
-at all, much less if they are relevant to the observed behavior.  It
-therefore makes sense that, when an approximation must be made in
-order to reduce execution time, or simply to make an analysis
-feasible, it should be made on these speculative paths.
+When we do make approximations in the characterization, we attempt to
+ensure that the captured execution remains possible, and apply coarser
+approximation to executions which are very different from the captured
+one.  The intuition behind this is that the captured execution is the
+only one which is known to be relevant to the bug, while all of the
+other paths discovered by static analysis are speculative: we do not
+know if they can ever happen at all, much less if they are relevant to
+the observed behavior.  It therefore makes sense that, when an
+approximation must be made in order to reduce execution time, or
+simply to make an analysis feasible, it should be made on these
+speculative paths.
 
 Similarly, we also attempt to make the machine more accurate at points
 which are nearer to the crash, and approximate more aggressively at
@@ -254,7 +243,7 @@ are more likely to be directly relevant to it.  Second, the time taken
 by some of the analysis steps involved in producing a state machine
 grow more than linearly in the distance to the crash, and so more
 aggressive simplification is necessary in order to keep the analysis
-tractable.
+tractable.\editorial{Not well explained}
 
 \subsection{The proximal cause}
 \label{sect:prox_cause}
@@ -267,17 +256,15 @@ correct, and for some simple bugs, such as \verb|NULL|-dereferences or
 assertion failures, it works well.  However, for more complicated
 classes of bugs, such as use-after-frees, there can be a significant
 lag between the first definitely bad behavior (such as the use of
-released memory) and the program crash, and this can cause later
-phases to take an excessively long time.  This can be mitigated by
-applying a dynamic analysis tool, such as
-Valgrind\cite{Nethercote2007}, to the captured execution, which
-provides a more accurate starting point for the rest of the analysis,
-and hence significantly reducing the total time taken.  In our
-prototype, we use a straightforward analysis to detect use-after-free
-bugs at the first reference to released memory; combining this with
-other forms of analysis or with application-specific knowledge would
-be straightforward, and would allow other classes of bugs to be
-detected.
+released memory) and the program crash, and this can complicated later
+phases.  This can be mitigated by applying a dynamic analysis tool,
+such as Valgrind\cite{Nethercote2007}, to the captured execution,
+which provides a more accurate starting point for the rest of the
+analysis.  We have implemented a a straightforward analysis to detect
+use-after-free bugs at the first reference to released memory as part
+of our prototype; combining this with other forms of analysis or with
+application-specific knowledge would be straightforward, and would
+allow other classes of bugs to be detected.
 
 \begin{figure*}
  \begin{subfloat}
@@ -287,7 +274,7 @@ A: mov (global1) -> %rax
 B: mov %rax -> (%rsp)
 C: cmp $0, %rax
 D: jne F
-E: mov &fallback_structure -> (%rsp)
+E: mov &fallback -> (%rsp)
 F: mov (%rsp) -> %rcx
 G: mov (%rcx) -> %rdx
 H: add $48, %rdx
@@ -300,26 +287,26 @@ K: ret
  \begin{subfloat}
   \begin{minipage}{90mm}
 \begin{verbatim}
-V: mov &some_structure -> (some_variable)
-W: mov &some_variable -> (global1)
+V: mov &struct1 -> (variable1)
+W: mov &variable1 -> (global1)
 ...
 X: mov $0 -> (global1)
-Y: mov $0 -> (some_variable)
+Y: mov $0 -> (variable1)
 ...
 Z: jmp V
 \end{verbatim}
   \end{minipage}
   \caption{Thread 2}
  \end{subfloat}
- \caption{A broken example of the privatize synchronization pattern.}
+ \caption{A buggy example of the privatize synchronization pattern.}
  \label{fig:broken_privatize}
 \end{figure*}
 
 The result of this initial analysis is generally a single-node state
 machine which captures the reason for the crash using only information
 which is available at the instruction on which the crash occurred.
-For example, consider the program shown in figures
-\ref{fig:broken_privatize}, which is intended to be a broken instance
+For example, consider the program shown in figure
+\ref{fig:broken_privatize}, which is intended to be a buggy instance
 of the common structure privatization pattern\needCite{} in an
 x86-like assembly language.  Thread 2 initializes (\verb|V|) and
 publishes (\verb|W|) a structure, does some unrelated work, and then
@@ -329,12 +316,12 @@ structure.  Meanwhile, thread 1 loads the pointer published by thread
 \verb|D|), and, if it is not, loads a fallback version (\verb|E|),
 before attempting to use it (\verb|F| through \verb|J|).  This will
 lead to a crash if instructions \verb|X| and \verb|Y| occur between
-instructions \verb|A| and \verb|H|, as in that case \verb|rdx| will
+instructions \verb|A| and \verb|G|, as in that case \verb|rdx| will
 contain a bad pointer at instruction \verb|J|, which will cause an
 immediate crash.  The proximal cause is then simply
-\verb|if BadAddr rdx then crash else no-crash| (translating the
-state machine into text in the obvious way), and is valid at the start
-of instruction \verb|J|.
+\verb|if BadAddr rdx then crash else no-crash| (translating the state
+machine into text in the obvious way), and is valid at the start of
+instruction \verb|J|.
 
 \subsection{Deriving earlier state machines}
 This proximal cause is accurate but not, by itself, sufficient to
@@ -409,75 +396,66 @@ of these stores will never be used.  We therefore ignore stores which
 occur more than a certain distance from the point for which the state
 machine is being derived, which both reduces the number of stores
 which have to be recorded and, more importantly, allows many nodes in
-the CFG to be merged\editorial{...}.
-
-\subsubsection{Resolving accesses to the thread's local stack}
-\label{sect:resolvestack}
+the CFG to be merged\editorial{This needs some eval}.
 
 Many load instructions will access a thread's local stack.  While it
 is, in principle, possible for one of these accesses to be involved in
 a concurrency bug, it is in practise highly unlikely, as it is unusual
 for one thread to access another's stack.  It is therefore useful to
 be able to match these loads to the stores which originally produced
-the loaded value, and hence to eliminate them.  We use a simple
-heuristic in order to do so.  When we encounter a store instruction,
+the loaded value, and hence to eliminate them.  We use a simple stack
+resolution heuristic to do so.  When we encounter a store instruction,
 we check if the instruction occurred in the captured execution, and if
 it did, and it stored to the stack in that case, we traverse the log
 to determine which instructions subsequently loaded the stored value.
 If any of those loads appear in the current state machine then we
 assume that they will load the value stored by this instruction,
-effectively eliminating them and thus simplifying the machine.
+eliminating them and thus simplifying the machine.\editorial{Would
+  also benefit from some eval.}
 
 \subsubsection{Branch instructions}
 \label{sect:branch_instrs}
-Branch instructions require more care.  There are two main special
-cases.  The easiest is a two-exit branch where both branches have
-constant target addresses, both targets were executed in the captured
-execution, and the untaken target occurred after the taken one in the
-execution.  In that case, we will be able to derive state machines for
-both targets and then produce a new state machine which consists of
-both target state machines and a new node which branches to one or the
-other depending on the branch condition.  If the untaken target
-occurred earlier then the taken one then combing the machines like
-this would risk introducing a cycle, which would complicate later
-analyses, and so in that case we treat this branch as one where the
-untaken target is never seen.
+Branch instructions also require care, as they may involve parts of
+the program which were not used in the captured execution.  We
+determine the branch's effects using a simple static analysis.  The
+first stage of this analysis is to build an approximation of the
+program's control flow graph starting from the branch instruction and
+stopping when we encounter an instruction for which we already have a
+state machine.  The state machines can then be propagated backwards
+through the graph using the same algorithm as we use to backtrack
+across dynamically-executed instructions, and a state machine can
+hence be derived for the root of the graph and the original branch
+instruction.
 
-In that case, or if the untaken target was genuinely never observed in
-the captured execution, we determine the branch's effects using a
-simple static analysis.  The first stage of this analysis is to build
-an approximation of the program's control flow graph starting from the
-untaken target instruction, stopping when we encounter an instruction
-for which we already have a state machine.  The state machines can
-then be propagated backwards through the graph using the same
-algorithm as we use to backtrack across dynamically-executed
-instructions, and a state machine can hence be derived for the root of
-the graph and the original branch instruction.
-
-Indirect branches, and in general anywhere the target of the branch is
-computed dynamically at runtime, pose an additional challenge here, as
-it is often difficult to statically predict the target of the branch.
-The most common case is return instructions, and we handle these by
-inlining every function into its called location, eliminating most
-return instructions completely.  The remainder correspond to functions
-which had started but not completed at the time of the crash, and we
-assume that if any of those return then it indicates that the bug has
-been avoided.
+Indirect branches, and any other branches which compute their target
+dynamically, pose an additional challenge here, as it is often
+difficult to statically predict the target of the branch.  The most
+common case is return instructions, and we handle these by inlining
+every function into its called location, eliminating most return
+instructions completely.  The remainder correspond to functions which
+had started but not completed at the time of the crash, and we assume
+that if any of those return then it indicates that the bug has been
+avoided.
 
 Other indirect branch instructions are more challenging.  We solve
 this problem by using the captured trace as a simple oracle: if the
 branch instruction exists in the dynamic trace, we assume that the
-instruction will always branch to the same place (if the instruction
-occurs several times then we use the last target).  If the instruction
-did not occur, or if the exploration simply reaches its depth limit,
-we place a special analysis-failed node in the graph.  Once the CFG is
-complete, we eliminate all branches to these failed nodes; if that
-causes some node to have no known successors, then that node is also
-marked as analysis-failed, and the process iterates.  This removes a
-minimal subgraph of the CFG which eliminates the unpredictable
-instructions.
+instruction will always branch to the same place (if it occurs several
+times then we use the last target).  If the instruction did not occur,
+or if the exploration simply reaches its depth limit, we place a
+special analysis-failed node in the graph.  Once the CFG is complete,
+we eliminate all branches to these failed nodes; if that causes some
+node to have no known successors then that node is also marked as
+analysis-failed, and the process iterates.  Note that the branches
+taken in the captured execution will always be preserved at this
+stage, as the oracle will always be able to provide at least some
+prediction of their target, and, as they are on the captured trace,
+they cannot be beyond the depth limit\editorial{Not sure that's very
+  clear}.  As such, this step can be seen as pruning the set of paths
+considered to be only those which are sufficiently similar to the
+captured execution.
 
-Loops also complicate this simple algorithm.  We solve this problem by
+Loops also complicate this simple algorithm.  We avoid this problem by
 simply breaking them, removing some subset of the graph's edges so as
 to eliminate the loop.  This has the useful side-effect of
 disambiguating the labels used to refer to load instructions: in a
@@ -494,99 +472,65 @@ The result is a DAG of instructions, rooted at the branch instruction
 and with state machines at all of its leaves, which approximates the
 part of the static CFG of the program which is most relevant to the
 captured execution.  This approximation is often imperfect, but, as
-discussed in section \ref{sect:inaccuracies}, such imperfections will
-not always prevent SLI from generating at least a partial fix for the
-bug, and hence can usually be tolerated in exchange for the
-dramatically simpler analysis which they allow.
-
-\begin{figure}
-\includegraphics[width=83mm]{diagrams/eg_cfg_start.pdf}
-\caption{CFG for instruction D}
-\label{fig:eg_cfg}
-\end{figure}
+discussed in section above, such imperfections will not always prevent
+SLI from generating at least a partial fix for the bug, and hence can
+usually be tolerated in exchange for the dramatically simpler analysis
+which they allow.
 
 In the example, the next instruction which must be assigned a state
-machine is \verb|D: je F|.  It is followed by instruction \verb|F|,
-which already has a machine, and \verb|E|, which does not.  \verb|E|
-is itself followed by \verb|F|.  The CFG is therefore as shown in
-figure \ref{fig:eg_cfg}.  The only node which initially does not have
-a state machine but which has state machines for all of its successors
-is \verb|E|, and so we will start by attempting to derive a state
-machine for it.  In this case, the instruction is a simple store to a
-stack location.  Assuming that this store was ever executed in the
-captured execution, local stack resolution will predict that the load
-at \verb|F| will load the stored value, and so the state machine
-assigned to \verb|E| will be
+machine is \verb|D: je F|, as that preceded instruction \verb|F| in
+the captured trace.  It is followed by instruction \verb|F|, which
+already has a state machine, and \verb|E|, which does not.  \verb|E|
+is itself followed by \verb|F|.  The CFG therefore contains just three
+nodes, representing \verb|D|, \verb|E|, and \verb|F|, with edges from
+\verb|D| to \verb|E| and \verb|F| and one from \verb|E| to \verb|F|.
+The only node which initially does not have a state machine but which
+has state machines for all of its successors is \verb|E|, and so we
+will start by attempting to derive a state machine for it.  In this
+case, the instruction is a simple store to a stack location.  Assuming
+that this store was ever executed in the captured execution, the stack
+resolution heuristic will predict that the load at \verb|F| will load
+the stored value, and so the state machine assigned to \verb|E| will
+be
 
 \begin{verbatim}
-if BadAddr (load(fallback_structure@G)+48)
+if BadAddr (load(fallback@G)+48)
  then crash
  else no-crash
 \end{verbatim}
 
-Instruction \verb|D| now has all of its successors, and so we can
-now derive a state machine for it.  This will be:
+Instruction \verb|D| now has all of its successors, and so we can now
+derive a state machine for it.  This is illustrated in figure
+\ref{fig:state_machines_instr_d}.  Backtracking further to instruction
+\verb|A| will then produce the state machine illustrated in figure
+\ref{fig:state_machines_instr_a}.
 
-\begin{verbatim}
-if !CondEq(rflags)
-then
- if BadAddr (load(load(rsp@F)@G)+48)
-  then crash
-  else no-crash
-else
- if BadAddr (load(fallback_structure@G)+48)
-  then crash
-  else no-crash
-\end{verbatim}
+\begin{figure*}
+\subfigure[Instruction D]{\includegraphics[scale=0.35,trim=0 60mm 0 40mm]{diagrams/statementD.pdf}
+  \label{fig:state_machines_instr_d}}
+\subfigure[Instruction A]{\includegraphics[scale=0.35,trim=0 60mm 0 40mm]{diagrams/statementA.pdf}
+  \label{fig:state_machines_instr_a}}
+\caption{State machines produced for the example program}
+\end{figure*}
 
-Backtracking further will eventually produce this state machine, valid
-at \verb|A|:
-
-\begin{verbatim}
-if load(global1@A) != 0
-then
- if BadAddr (load(load(global1@A)@G)+48)
-  then crash
-  else no-crash
-else
- if BadAddr (load(fallback_structure@G)+48)
-  then crash
-  else no-crash
-\end{verbatim}
-
-(It should be emphasised that the actual programs produced are state
-machines, and do not have to be block-structured programs; the
-block-structured form is simply a more convenient notation.  This
-means that is not actually necessary to duplicate the branches like
-this in all cases, which can ameliorate an otherwise exponential
-increase in the complexity of the state machines.)
-
-It is informative to consider what would have happened if the branch
-had not been taken but the program had crashed anyway (which will
-happen if the fallback structure also contains an invalid pointer).
-The state machine assigned to instructions \verb|E| will be the same
-as before, except that it will be derived based on the actual dynamic
-execution rather than one hypothecated based on static analysis, and
-so the state machine for instruction \verb|D| will also be unchanged.
-This is important, as it gives the approach some tolerance for changes
-in the details of how a bug is reproduced.\editorial{Kind of needs
-  rephrasing.  It's a pretty important point, as well.}
-
-This example also illustrates that the local stack heuristic is not
-simply equivalent to assuming a completely static data flow graph, but
-can correctly encode some simple control-flow dependencies.  This is
-because stack resolution is interleaved with control flow discovery
-and so naturally respects the programs flow of control.  Separating
-the two processes into independent phases would lose this property,
-and result in far less accurate characterizations.\editorial{Also
-  important, and also badly described.}
+Note that identical state machines would have been derived if the
+program had not taken the branch immediately before crashing (which
+might happen if the \verb|fallback| structure was itself invalid); the
+only difference is that \verb|E|'s state machine will be derived from
+the captured execution rather than a hypothetical execution generated
+by static analysis.  This example also illustrates that, because stack
+resolution is interleaved with control flow discovery, it is not
+equivalent to assuming a completely static data flow graph, but can
+correctly describe simple control-flow dependencies.  Separating the
+two processes into independent phases would lose this property, and
+result in far less accurate characterizations.
 
 \section{Investigating the multi-threaded behavior of the program}
 \label{sect:multi_threading}
 
 Once a single-threaded characterization of the bug has been produced,
-it is possible to investigate the crashed thread's interactions with
-other threads in the system.  Our basic approach here is to replay the
+SLI begins to investigate the crashed thread's interactions with other
+threads in the system.  Our basic approach here is to replay the
 program's execution and discover points at which the state machine
 would have returned \verb|no-crash| if it had executed atomically.
 From these, it is possible to infer which parts of the program's
@@ -603,11 +547,11 @@ is a very worthwhile optimization.
 Our implementation of this strategy has several stages.  First, we
 determine which memory locations are relevant to the state machines in
 the current batch, by replaying the log from the beginning and
-evaluating the state machines wherever they are applicable, and
-recording the memory locations which were loaded.  The log can then be
+evaluating the state machines wherever they are applicable and
+recording the memory locations which they load.  The log can then be
 replayed again collecting all of the instructions which store to those
 locations, along with the values which are stored, and so produce an
-additional log showing all changes to the relevant addresses.
+additional log containing only stores to the relevant addresses.
 
 Applicability in this context means that the instruction for which the
 state machine was derived is sufficiently similar to the current point
@@ -615,10 +559,10 @@ in execution that evaluating the machine is likely to produce
 meaningful results.  This is complicated by the way in which the state
 machines combine both static and dynamic information, and so matching
 either the specific dynamic instruction or the static instruction
-pointer for which the machine was derived is likely to be
-insufficient.  Our approach is to consider two points to match if both
-the instruction pointer and the call stack match.  This is equivalent
-to saying that the instructions match if they would have had the same
+pointer for which the machine was derived is likely to be inadequate.
+Our approach is to consider two points to match if both the
+instruction pointer and the call stack match.  This is equivalent to
+saying that the instructions match if they would have had the same
 instruction pointer had every function on the stack been inlined into
 its caller, which reflects our approach of inlining every encountered
 function during CFG construction.
@@ -631,8 +575,8 @@ and accesses to the local stack\footnote{This may result in the
   construction of duplicate machines, which are eliminated in the
   obvious way.}.  This effectively factors out the effects of
 thread-local computation, converting each state machine into a set of
-state machines which individually depend only upon the content of
-memory locations which had previously been flagged as relevant.
+state machines which individually depend only on the content of shared
+memory.
 
 These specialized state machines are then evaluated at each store to a
 relevant address, partitioning the log into regions which crash (if
@@ -642,8 +586,7 @@ These regions indicate where the specialized machines (and hence,
 hopefully, the dynamic instructions from which they were derived)
 would have been safe if they had been executed atomically.  Any
 machines which always predict the same result, whether \verb|crash| or
-\verb|no-crash|, are then discarded, as they are unlikely to be
-helpful.
+\verb|no-crash|, are discarded at this stage.
 
 The specialized partitionings are then combined to produce a
 partitioning for the original unspecialized state machine: wherever
@@ -652,14 +595,15 @@ unspecialized partition will have the same prediction, and wherever
 they differ the unspecialized partition will make no prediction at
 all.  If the resulting schedule makes no \verb|crash| predictions or
 no \verb|no-crash| ones then the original unspecialized state machine
-is discarded as unhelpful.  In this way SLI is able to ignore
-thread-local computation without the risk of also ignoring some
+is discarded.  In this way SLI is able to ignore thread-local
+computation without the risk of also ignoring some
 scheduling-dependent work\editorial{Rephrase}.  See section
 \ref{sect:final_example} for a situation in which specialization
 allows us to derive an additional potential fix, and the discussion of
 the \verb|twovar| test case in section \ref{sect:bug_descr} for one in
 which the specialized predictions would have produced an incorrect fix
-if they had been used without the recombination step.
+if they had been used without the recombination step.\editorial{Not
+  sure how comprehensible that is.}
 
 \subsection{Generating candidate fixes}
 \label{sect:gen_fix}
@@ -667,19 +611,19 @@ if they had been used without the recombination step.
 At the end of this stage, we have, for each (unspecialized) state machine:
 
 \begin{itemize}
-\item A list of all memory accesses which the state machine depends
-  on.
+\item A list of all loads which the state machine depends on.
 \item A list of all instructions which stored to one of the addresses
   which the machine depended on in the captured execution (i.e. all of
   the instructions which, when interleaved with the state machine,
   might have prevented it from executing atomically).
 \item A set of sub-ranges of the execution in which the state machine
-  could have executed atomically without predicting a crash.
+  would predict a crash if executed atomically.
 \end{itemize}
 
-Assuming that the unsafe regions all end on the same thread as they
-started, this information can be encoded into a set of critical
-sections as follows:
+To fix the bug, it is then sufficient to ensure that the loads in the
+first list do not overlap with any of the stores in the second or any
+of the ranges in the third.  These lists transform naturally into a
+set of critical sections:
 
 \begin{itemize}
 \item There is one critical section which covers all of the accesses
@@ -692,25 +636,23 @@ sections as follows:
   unsafe regions.
 \end{itemize}
 
-Crashing regions which cross threads cannot be protected in this way.
-We re-designate those areas of the log as having an unknown crash
-prediction, which causes SLI to give up trying to protect them and to
-penalize the resulting fix when selecting which fix to actually apply
-(see section \ref{sect:selectfix}).
-
-Our fix then consists of ensuring that the first critical section
-cannot execute at the same time as any of the second two kinds.  In
+It is then sufficient to ensure that the first type of critical
+section does not overlap with any of the second or third types.  In
 our current implementation, this is done by introducing a new global
 lock which is acquired before the first instruction of any of these
 critical sections and then released after the last one (see section
 \ref{sect:binpatch} for more details).  This is moderately
 pessimistic, as it prohibits multiple threads from running sections of
 the first type in parallel and prohibits sections of the second and
-third type from running in parallel with each other, which would have
-been allowed by the intended fix.  We made this choice purely in order
-to simplify the implementation; a more intelligent implementation
-could retain greater concurrency, which might lead to lower overhead,
-at the expense of slightly greater implementation complexity.
+third type from running in parallel with each other; a more
+intelligent implementation could retain greater concurrency at the
+expense of slightly greater implementation complexity.
+
+Crashing regions which cross threads cannot be protected in this way.
+We re-designate those areas of the log as having an unknown crash
+prediction, which causes SLI to give up trying to protect them and to
+penalize the resulting fix when selecting which fix to actually apply
+(see section \ref{sect:selectfix}).
 
 \subsection{Selecting a fix}
 \label{sect:selectfix}
@@ -724,10 +666,10 @@ log where we are unable to produce a crash prediction, $n_s$ is the
 total number of critical sections, $s_i$ is the number of accesses in
 the $i$th critical section, and $C_s$ and $U$ are constants reflecting
 the cost of introducing a new empty critical section and of only
-partially fixing the bug, respectively.  Our prototype sets $U=1000$
-and $C_s=10$, strongly preferring fixes for which all unsafe states
-can be eliminated and weakly preferring fixes with a smaller number of
-critical sections.
+partially fixing the bug.  SLI then selects the candidate fix with the
+lowest cost.  Our prototype sets $U=1000$ and $C_s=10$, strongly
+preferring fixes for which all unsafe states can be eliminated and
+weakly preferring fixes with a smaller number of critical sections.
 
 In our evaluation, there are generally only a small number of possible
 fixes, all of which are correct and none of which would obviously lead
@@ -737,61 +679,47 @@ heuristic does not appear to be critical.
 \subsection{Example}
 \label{sect:final_example}
 
-Our earlier example derived the state machine:
+Our earlier example derived the state machine shown in figure
+\ref{fig:state_machines_instr_a}.  The list of relevant addresses will
+contain \verb|global1|, \verb|fallback| and \verb|variable1|.
+Note that the load in instruction \verb|J| is \emph{not} represented
+in this list: the value which it loads does not affect whether or not
+the program crashes, and so it is not considered relevant for these
+purposes.
 
-\begin{verbatim}
-if load(global1@A) != 0
-then
- if BadAddr (load(load(global1@A)@G) + 48)
-  then crash
-  else no-crash
-else
- if BadAddr (load(fallback_structure@G) + 48)
-  then crash
-  else no-crash
-\end{verbatim}
-
-The list of relevant addresses will contain \verb|global1|,
-\verb|fallback_structure|, and whatever \verb|global1| points at,
-which, in this example, will be \verb|some_variable|.  Note that the
-load in instruction \verb|J| is \emph{not} represented in this list:
-the value which it loads does not affect whether or not the program
-crashes, and so it is not considered relevant for these purposes.
-
-Assuming that the only stores to relevant addresses are those
-indicated in figure \ref{fig:broken_privatize}, the relevant store log
-will then consist a sequence of entries similar to these:
-
-\begin{verbatim}
-V.1 &some_structure -> some_variable
-W.1 &some_variable -> global1
-X.1 0 -> global1
-Y.1 0 -> some_variable
-V.2 &some_structure -> some_variable
-W.2 &some_variable -> global1
-X.2 0 -> global1
-Y.2 0 -> some_variable
+\begin{table}
+\begin{tabular}{ll}
+ Store & Specialization predicts \\
+       & crash before instruction \\
+\verb|V.1 &struct1 -> variable1| & Yes\\
+\verb|W.1 &variable1 -> global1| & No\\
+\verb|X.1 0 -> global1| & No\\
+\verb|Y.1 0 -> variable1| & No\\
+\verb|V.2 &struct1 -> variable1| & Yes\\
+\verb|W.2 &variable1 -> global1| & No\\
+\verb|X.2 0 -> global1| & No\\
+\verb|Y.2 0 -> variable1| & No\\
 ...
-\end{verbatim}
+\end{tabular}
+\caption{Relevant store log for example}
+\label{fig:relevant_stores}
+\end{table}
 
-This will repeat for the entirety of the captured execution.
-
-The state machine does not depend on registers or the thread-local
-stack, and so specialization will have no effect.  We therefore
-proceed to classify the store log into crashing and non-crashing
-components.  In this particular case, the state machine will predict
-that no state can crash, which is correct: if the loads in the state
-machine had executed atomically, with respect to the stores present in
-the store log, the program would not have crashed.  This suggests a
-potential fix with five critical sections:
-
-\begin{itemize}
-\item One covering instructions \verb|A| to \verb|G| in thread 1.
-\item One single-instruction critical section for each of instructions
-  \verb|V|, \verb|W|, \verb|X|, and \verb|Y| in thread 2.
-\end{itemize}
-
-This would fix the bug, and will be suggested by SLI.
+Assuming that the only stores to relevant addresses are those shown in
+figure \ref{fig:broken_privatize}, the relevant store log will then be
+as shown in figure \ref{fig:relevant_stores}.  The state machine does
+not depend on registers or the thread-local stack, and so
+specialization will have no effect.  We therefore proceed to classify
+the store log into crashing and non-crashing components.  In this
+particular case, the state machine will predict that no state can
+crash, which is correct: if the loads in the state machine had
+executed atomically, with respect to the stores present in the store
+log, the program would not have crashed.  This suggests a potential
+fix with five critical sections: one covering instructions \verb|A| to
+\verb|G| in thread 1, and a single-instruction critical section for
+each of instructions \verb|V|, \verb|W|, \verb|X|, and \verb|Y| in
+thread 2.  This would fix the bug, and will be suggested by
+SLI.\editorial{Not a minimal fix...}
 
 This is not the complete story, however\editorial{Don't like that
   phrasing}, as state machine generation will also have produced
@@ -808,7 +736,7 @@ As this accesses both registers and the stack, it can be specialized,
 producing two new machines:
 
 \begin{verbatim}
-if BadAddr (load(some_variable@G)+48)
+if BadAddr (load(variable1@G)+48)
  then crash
  else no-crash
 \end{verbatim}
@@ -816,15 +744,16 @@ if BadAddr (load(some_variable@G)+48)
 and
 
 \begin{verbatim}
-if BadAddr (load(fallback_structure@G)+48)
+if BadAddr (load(fallback@G)+48)
  then crash
  else no-crash
 \end{verbatim}
 
-The second one will always predict \verb|no-crash|, and so is
-discarded.  The first machine, however, predicts a crash whenever
-\verb|some_variable| contains something which is not a valid pointer,
-which occurs from \verb|Y.1| to \verb|V.2| in the store log.  This
+The second one will always predict \verb|no-crash|, assuming that the
+fallback structure is always valid, and so is discarded.  The first
+machine, however, predicts a crash whenever \verb|variable1| contains
+something which is not a valid pointer, which occurs from \verb|Y.1|
+to \verb|V.2| in the store log (and subsequent repeats).  This
 suggests an alternative fix with two critical sections:
 
 \begin{itemize}
@@ -843,13 +772,13 @@ preferred by the prioritisation heuristic.
 
 It could be argued, however, that this smaller fix is inferior to the
 larger alternative, despite completely eliminating the crash and
-imposing lower overhead, as it is less ``sympathetic'' to the existing
-structure of the program.  The author of thread 2 had presumably
-intended to privatize the structure at instruction \verb|X|, and so
-might reasonably have defined a ``correct'' fix to be one which
-ensures correct privatization, a goal which is achieved by the first
-fix but not by the second.  SLI, by contrast, has no notion of
-intended behavior, or indeed any form of software engineering
+potentially imposing lower overhead, as it is less ``sympathetic'' to
+the existing structure of the program.  The author of thread 2 had
+presumably intended to privatize the structure at instruction
+\verb|X|, and so might reasonably have defined a ``correct'' fix to be
+one which ensures correct privatization, a goal which is achieved by
+the first fix but not by the second.  SLI, by contrast, has no notion
+of intended behavior, or indeed any form of software engineering
 construct, and so selects its fix based on the more mundane concerns
 of avoiding the crash and minimizing the impact on performance.  This
 is both a strength and a weakness: a strength in that it increases the
@@ -863,45 +792,51 @@ eliminates its symptoms, and the techniques used by SLI are much more
 applicable to the latter.  This will be true of any approach which
 does not rely on programmer annotations (ignoring trivial systems
 which just pattern-match the buggy code against a library of common
-bugs and their standard fixes).  The extra flexibility gained by being
+bugs and their standard fixes); the extra flexibility gained by being
 applicable to arbitrary binaries makes this a reasonable
 trade-off.\editorial{Could make more of this, and maybe pull it a bit
   earlier.}
 
-\subsection{Implementation details of the binary patcher}
+\subsection{Creating a binary patch}
 \label{sect:binpatch}
 
-Once an appropriate dynamic critical section has been discovered, it
-must be converted to a static one.  Mapping the dynamic points into
-particular instructions is generally straightforward, but mapping
-ranges can be more difficult if they cross control flow branches.
-
-We simplify the problem by detecting if the start and end of a
-critical section are in different functions (as delimited by
-\verb|call| and \verb|ret| instructions) and, if they are,
-backtracking up the call stack to their most recent common stack
-frame.  Besides simplifying the binary patching problem, this has the
-(sometimes) useful side-effect of expanding the critical section, and
-generally moving it to boundaries which are more likely to correspond
-to the original programmers' ideas about where critical section
-boundaries ``should be''\editorial{Rephrase}.
+Once an appropriate set of critical sections has been discovered, they
+must be instantiated into a binary patch to produce an actual fix.  We
+simplify the problem by detecting if the start and end of a critical
+section are in different functions (as delimited by \verb|call| and
+\verb|ret| instructions) and, if they are, backtracking up the call
+stack to their most recent common stack frame.  Besides simplifying
+the binary patching problem, this has the (sometimes) useful
+side-effect of expanding the critical section, and generally moving it
+to boundaries which are more likely to correspond to the original
+programmers' ideas about where critical section boundaries ``should
+be''\editorial{Rephrase}.
 
 Once we have obtained start and end points in the same function frame,
-we examine the program's machine code starting from the start point,
-exploring its control flow graph until we encounter the end point or
-an indirect branch (the exploration process is sufficiently naive that
-indirect branches cannot be sensibly predicted, and so exploration has
-to stop at that point).  The CFG thus obtained is then trimmed to only
-contain paths starting at the start node and ending at the end node.
-The desired synchronisation can then be added to this CFG in a
-straightforward way (being careful to always release any needed locks
-when leaving the patch), and the result recompiled into a fragment of
-position-independent machine code.  This is combined with a stub
-loader and built into an ELF shared library, which can be loaded into
-the target program using \verb|LD_PRELOAD| (or an equivalent runtime
-mechanism using).  The stub loader is then responsible for actually
-applying the patch to the program, either by patching a jump into the
-entrypoint instruction or using the processor's debug facilities.
+we again examine the program's control flow graph, starting at the
+first instruction in the critical section.  This time, however, we do
+not break cycles, or make any unsafe approximations, so that the CFG
+precisely captures the program's behavior over the instructions where
+it is valid; indirect branches are replaced with special stub nodes
+which branch back to the original program text.  The CFG thus obtained
+is then trimmed to only contain paths starting at the first
+instruction in the critical section and ending at the last one.  For
+example, the second potential fix discussed in section
+\ref{sect:final_example} requires a critical section from instructions
+\verb|Y| to \verb|V|.  The CFG obtained in this case will contain
+nodes for \verb|Y|, \verb|Z|, and \verb|V|, linearly in that order,
+followed by a stub node which branches back \verb|W| in the original
+program.  It is then straightforward to place a lock-acquire
+instruction immediately before the first node in the CFG and a
+lock-release one immediately before every stub node, which guarantees
+that the lock will be released precisely once for every time which it
+is acquired.  The CFG can then be recompiled into a fragment of
+position-independent machine code which is combined with a stub loader
+and built into an ELF shared library.  This can be loaded into the
+target program using \verb|LD_PRELOAD| (or an equivalent mechanism).
+The stub loader is then responsible for actually applying the patch to
+the program, either by patching a jump into the entrypoint instruction
+or using the processor's debug facilities.
 
 One potentially useful property of these patches is that they can be
 straightforwardly applied to running programs, and so once a fix has
@@ -918,7 +853,9 @@ indicates a bug.  If the use-after-free analysis mentioned in section
 \ref{sect:prox_cause} is used then we also assume that the program
 will never deliberately use memory after passing it to the \verb|free|
 function.  There exist programs for which some or all of these
-assumptions will be false, but they appear to be reasonably rare.
+assumptions will be false, but they appear to be reasonably rare, and
+so these assumptions should not significantly limit the approaches
+applicability.
 
 The current implementation provides some facilities for programmers to
 extend this knowledge with additional assumptions, such as flagging
@@ -935,22 +872,22 @@ program will itself introduce a deadlock.  We mitigate the issue
 slightly by using a timeout on our introduced locks, so that deadlocks
 at least resolve themselves in bounded time, but this can lead to
 extremely poor performance or incomplete fixing of bugs.  This could
-be avoided in some cases by performing static analysis to select
-critical sections which are less likely to lead to deadlocks, at the
-expense of potentially not being able to find any safe fix at all.
+be avoided in some cases by performing additional static analysis to
+select critical sections which are less likely to lead to deadlocks,
+at the expense of potentially not being able to find any safe fix at
+all.
 
-One possible approach would be to integrate with a deadlock immunity
-system such as Dimmunix\cite{Jula2008}, detecting and fixing deadlocks
-as they happen.  The system would then hopefully eventually converge
-on a state which is both deadlock and race free.  It should also be
-possible in many cases to simulate the effect which SLI lock insertion
-would have on Dimmunix, and hence to determine that Dimmunix
-ultimately would insert a healing lock before it needs to do so, which
-would eliminate the need to reproduce the deadlock before fixing it.
-Of course, the Dimmunix lock order graph is itself only an
-approximation, and so this would not be guaranteed to be effective in
-every case, but it seems likely that it would be sufficient in most
-situations.
+Another possible approach would be to integrate with a deadlock
+immunity system such as Dimmunix\cite{Jula2008}, detecting and fixing
+deadlocks as they happen.  The system would then hopefully eventually
+converge on a state which is both deadlock and race free.  It should
+also be possible to simulate the effect which SLI lock insertion would
+have on Dimmunix lock order graph, and hence to determine that
+Dimmunix ultimately would insert a healing lock before it needs to do
+so, eliminating the need to reproduce the deadlock before fixing it.
+Of course, the Dimmunix graph is itself only an approximation, and so
+this would not be guaranteed to be effective in every case, but it
+seems likely that it would be sufficient in most situations.
 
 We have not implemented this in our current prototype.
 
@@ -1060,11 +997,14 @@ bugs; we omit the full results due to space constraints\editorial{Not
 
 \subsection{Description of test bugs}
 \label{sect:bug_descr}
+
+We now describe our test bugs in more detail.
+
 \verb|toctou|, a simple two-thread time-of-check, time-of-use race.
 In this test, one thread loops incrementing a counter, while another
 thread repeatedly issues pairs of loads of the counter and asserts
 that the loads returned the same value.  Our prototype generates a
-single suggested fix, which consists of two critical sections.  One of
+single suggested fix consisting of two critical sections.  One of
 these sections protects the write-back of the incremented counter in
 the first thread, while the other protects the two loads in the second
 thread.  This is a correct and minimal fix.
@@ -1097,6 +1037,8 @@ if 5 != load(global2@l2)
  then crash
  else no-crash
 \end{verbatim}
+
+and
 
 \begin{verbatim}
 if 7 != load(global2@l2)
@@ -1133,11 +1075,12 @@ has, attempts to use it in a way which leads to an immediate crash if
 initialisation is not complete.
 
 Our tool produced two suggested fixes in this case.  One of these was
-expected, consisting of two critical sections, one of which contained
-just the load of the global pointer in the consuming thread and the
-other spanning the actions of the producing thread from the point at
-which it published the structure to the point at which it finished
-initialising it.  This is a correct fix.
+expected, consisting of two critical sections, one of which spanning
+the consuming thread from the point at which it loaded the pointer to
+the point at which it used its contents while the other spanned the
+actions of the producing thread from the point at which it published
+the structure to the point at which it finished initializing it.  This
+is a correct fix.
 
 The other suggestion was an artifact of our test harness, which
 repeatedly published, initialised, unpublished, and then deinitialised
@@ -1154,9 +1097,9 @@ unpublishing the structure.  While somewhat surprising, this is also a
 correct fix, completely preventing the observed bug, and, as it
 produces slightly smaller critical sections, would be preferred by the
 fix prioritisation heuristic.\smh{good example of a bad fix which is
-  actually good.}
+  actually good.}\editorial{ref earlier discussion of privatize example?}
 
-\verb|privatise|.  This is the converse of \verb|publish|: a thread is
+\verb|privatize|.  This is the converse of \verb|publish|: a thread is
 attempting to make a structure private, and does it incorrectly.  It
 is similar to the example program in figure
 \ref{fig:broken_privatize}, which has already been extensively
@@ -1222,34 +1165,21 @@ SLI produced six suggested fixes when run on a log generated by
 running this test.
 
 The first of these had five critical sections: one covering the load
-on line 1 to the load of \verb|done_init| on line 3, and one each for
-each of the stores on lines 4, 5, 13, and 14.  The other suggestions
-were supersets of this suggestion, extending it to include various
-accesses in \verb|pthread_barrier_wait|.
+on line \verb|1| to the load of \verb|done_init| on line \verb|3|, and
+one each for each of the stores on lines \verb|4|, \verb|5|,
+\verb|13|, and \verb|14|.  The other suggestions were supersets of
+this suggestion, extending it to include various accesses in
+\verb|pthread_barrier_wait|.
 
-This illustrates two important weaknesses of the approach.  First,
-because SLI does not know anything about any operating system-provided
-functionality, it cannot take advantage of any existing
-synchronization present in the program (in this case, the
+This illustrates an important weakness of the approach.  First,
+because our implementation of SLI does not know anything about any
+operating system-provided functionality, it cannot take advantage of
+any existing synchronization present in the program (in this case, the
 \verb|pthread_barrier_wait|s make the critical sections protecting
-statements 13 and 14 redundant).  It also means that the analysis must
-explore these standard functions, and can sometimes attempt to ``fix''
-the benign races inherent in synchronisation operations, which is
-unlikely to be productive.
-
-Second, SLI can only fix the bug which it observes.  The original
-developers of this code had intended that only one thread would assign
-to \verb|libgcc_s_forcedunwind|, essentially implementing a singleton
-pattern.  The fix which SLI produces does not enforce the intended
-constraint.  It happens that in this particular case the weaker
-correctness property discovered by SLI is sufficient, but in a more
-complicated example the loss of the singleton property might be a more
-serious bug, and so SLI's fix might actually transform a fail-stop
-crashing bug into one which causes silent data corruption.  This is
-largely unavoidable without greater semantic knowledge of the
-program's intended behavior, and is an inherent risk in any system
-which attempts to modify a program automatically without any
-programmer-provided assistance.
+statements \verb|13| and \verb|14| redundant).  It also means that the
+analysis must explore these standard functions, and can sometimes
+attempt to ``fix'' the benign races inherent in synchronization
+operations, which is unlikely to be productive.
 
 \verb|thunderbird| is Mozilla bug number
 391259\cite{thunderbird39125}, a simple time-of-check, time-of-use
@@ -1257,11 +1187,8 @@ race in the IMAP client component of Thunderbird, a popular
 open-source e-mail client.  We modified Thunderbird to include some
 additional debugging messages and used a custom scheduler in order to
 make the bug reproduce more readily; the test is otherwise identical
-to the behavior which a user might have encountered.  The race is
-between \verb|nsImapProtocol::CloseStreams()|, which runs on the UI
-thread, and \verb|nsImapProtocol::ProcessCurrentURL()|, which runs in
-an IMAP worker thread.  The relevant parts of the program are as
-follows:
+to the behavior which a user might have encountered.  The relevant
+parts of the program are as follows:
 
 \begin{verbatim}
 void nsImapProtocol::CloseStreams()
@@ -1303,9 +1230,7 @@ longer to reproduce, both of which lead to much larger log files.
 Note also that the log in this case starts at a snapshot of the
 program's state taken after it had completed initialisation, whereas
 the other test cases start at the very first instruction in the
-program; without this, the disparity would be even larger.  It seems
-likely that a less na\"ive replay system could somewhat reduce the
-time spent performing replay.
+program; without this, the disparity would be even larger.
 
 \subsection{Effects of backtracking further}
 \label{sect:eval:backtrack}
@@ -1331,11 +1256,13 @@ rapidly as the distance which we backtrack increases, by a factor of
 more than 500 when going from a single level of backtracking to fifty
 levels.  Note, however, that the total time taken by the non-replay
 analysis is, even with a backtracking depth of 50, still just 620ms,
-whereas the replay components take nearly eighty minutes.  None of our
-tests depend on more than three levels of backtracking to produce a
-correct fix (and the \verb|thunderbird| test requires just one), and
-so this suggests that SLI should be able to backtrack sufficiently to
-solve most bugs in a reasonable amount of time.
+or 0.013\% of the total time taken.  None of our tests depend on more
+than three levels of backtracking to produce a correct fix (and the
+\verb|thunderbird| test requires just one), and so this suggests that
+SLI should be able to backtrack sufficiently to solve most bugs in a
+reasonable amount of time.
+
+\editorial{Maybe plot total time taken, as well.}
 
 \editorial{At the moment, this is all based off a single run at each
   depth.  Re-do with error bars once the repeats have finished running.}
@@ -1347,7 +1274,7 @@ problems.  Most recently, Kivati\cite{Chew2010a} attempts to fix
 single-variable atomicity violations automatically by combining a
 static analysis pass with some runtime support.  The result is able to
 prevent many common kinds of race-like bugs with low overhead.  There
-are a couple of important differences between their approach and ours:
+are several important differences between their approach and ours:
 
 \begin{itemize}
 \item SLI is only activated once a bug has been observed, whereas
@@ -1357,15 +1284,10 @@ are a couple of important differences between their approach and ours:
   whereas, once generated, SLI fixes can stand alone without any of
   the rest of the SLI infrastructure, which may sometimes improve
   performance.
-
 \item Kivati requires access to the program's source code during the
   initial static analysis phase, whereas SLI only requires the binary.
-
 \item SLI can be applied to a wider class of bugs than Kivati, such as
   the \verb|twovar| example described above.
-
-\item The analysis performed by Kivati is somewhat simpler than SLI's,
-  and so is likely to scale to more complicated bugs.
 \end{itemize}
 
 Another approach, taken by systems such as
@@ -1393,7 +1315,7 @@ would be.
 
 There have also been a number of attempts to automatically fix heap
 management bugs, such as buffer overflows and use-after-free errors,
-most recently AutoPaG\cite{Lin2007} and Exterminator\cite{Novark2007}.
+including AutoPaG\cite{Lin2007} and Exterminator\cite{Novark2007}.
 These systems both take an example of a buffer overflow bug (assumed
 to be deterministic) and use various analyses to determine the root
 cause of the bug, eventually using this to produce a potential fix.
@@ -1401,15 +1323,15 @@ In that, they are remarkably similar to the system currently under
 discussion; the main difference being the type of bug targeted.
 
 All of these systems attempt to fix bugs or otherwise prevent them
-from happening.  An alternative strategy is to make bugs less serious
-when they do happen.  The most famous example of such a strategy is
-probably failure obliviousness\cite{Rinard2004}, which waits until the
-protected program makes an invalid memory reference and then attempts
-to fix things up from the resulting exception handler using a number
-of heuristics.  DieHard\cite{Berger2006} is conceptually similar, but
-works pre-emptively rather than from a fault handler, by guessing
-where memory errors are likely to occur and modifying the program's
-memory map to make those errors as harmless as possible.  In this way
+from happening.  An alternative strategy is to make errors less
+serious when they do happen.  The most famous example of such a
+strategy is probably failure obliviousness\cite{Rinard2004}, which
+waits until the protected program makes an invalid memory reference
+and then attempts to fix it from the resulting exception handler.
+DieHard\cite{Berger2006} is conceptually similar, but works
+pre-emptively rather than from a fault handler, by guessing where
+memory errors are likely to occur and modifying the program's memory
+map to make those errors as harmless as possible.  In this way
 programs are able to continue executing in spite of the presence of
 errors which would otherwise cripple them.  Failure obliviousness
 cannot, however, completely remove any errors, and so can be seen as
@@ -1430,13 +1352,13 @@ overhead.
 
 There are a number of potential extensions of this work, beyond the
 obvious ones of broadening the evaluation and improving performance.
-At the highest level, this approach combines the use of static
-analysis, which considers many possible executions and produces
-general fixes, and dynamic analysis, which considers only the observed
-execution and produces much more targeted fixes.  We do not claim to
-have found the optimal balance between these two approaches, or even
-that a global optimum exists; better characterizing the trade-offs
-involved is likely to suggest some useful improvements.
+At a high level, SLI must balance the use of static analysis, which
+considers many possible executions and produces general fixes, and
+dynamic analysis, which considers only the observed execution and
+produces much more targeted fixes.  We do not claim to have found the
+optimal combination of these two approaches, or even that a global
+optimum exists; better characterizing the trade-offs involved is
+likely to suggest useful improvements.
 
 There is a similar balance to be struck between attempting to be
 completely generic and using semantic knowledge, both of the program
@@ -1449,9 +1371,9 @@ our ability to produce useful, performant fixes.  One particularly
 intriguing approach would be to combine SLI with an invariant
 inference scheme such as Daikon\cite{Ernst2007} or
 DIDUCE\cite{Hangal2002}, which would allow us to obtain such semantic
-information compromising SLI's current ability to run on almost
-arbitrary unmodified binaries.  We intend to investigate this idea
-more fully in the future.
+information without compromising SLI's current ability to run on
+almost arbitrary unmodified binaries.  We intend to investigate this
+idea more fully in the future.
 
 \section{Conclusions}
 
