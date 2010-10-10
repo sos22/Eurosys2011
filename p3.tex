@@ -104,8 +104,7 @@ Furthermore, the fixes will usually have very low performance
 overhead, and the process of generating the fix itself takes only a
 moderate amount of time (ranging from seconds in simple cases to a few
 hours in more complicated ones).  SLI does not depend on programmer
-annotations or semantic knowledge of the program's intended behavior,
-but can make use of such information when it is available.
+annotations or semantic knowledge of the program's intended behavior.
 
 Our approach consists of several key phases.  First, the bug must be
 captured under a deterministic replay system such as
@@ -809,25 +808,6 @@ either by the directly modifying entrypoint instruction to jump
 directly to the patch or by setting a breakpoint on the entrypoint and
 transferring control to the patch from the breakpoint handler.
 
-\section{Semantic knowledge}
-\label{sect:semanticknowledge}
-SLI needs only very limited semantic knowledge of the intended
-behavior of the program.  In the default configuration, the only
-assumptions made about the program are that calling
-\verb|__assert_fail| or exiting due to an unhandled signal always
-indicates a bug.  If the use-after-free analysis mentioned in section
-\ref{sect:prox_cause} is used then we also assume that the program
-will never deliberately use memory after passing it to the \verb|free|
-function.  There exist programs for which some or all of these
-assumptions will be false, but they appear to be reasonably rare, and
-so these assumptions should not significantly limit the approach's
-applicability.  The current implementation provides some facilities
-for programmers to extend this knowledge with additional assumptions,
-such as flagging functions other than \verb|__assert_fail| as
-indicating bugs or applying other dynamic analyses when deriving the
-proximal cause.  We intend to expand these further in
-future.\editorial{Wording doesn't really work very well.}
-
 \section{Evaluation}
 \label{sect:evaluation}
 
@@ -883,8 +863,7 @@ very na\"ive replay engine would yield significant performance gains.
   process.  Results presented are mean and standard deviation of five
   runs of the fix-generating program applied to a single log file for
   each bug.  Experiments were conducted on an Intel Q6600 with 8GiB of
-  RAM running 64-bit Linux 2.6.28, and the minimal amount of semantic
-  knowledge was used (see section \ref{sect:semanticknowledge}).}
+  RAM running 64-bit Linux 2.6.28.}
 \end{figure*}
 
 Figure \ref{fig:phasedistribution} shows how the time taken is
@@ -948,10 +927,10 @@ This is a correct and minimal fix.
 there are two global variables, and one thread loops setting both to
 five and then setting both to seven while another thread loops loading
 both and asserting them to be equal.  SLI produces a single suggested
-fixes in this case.  The fix contains five critical sections, one
-protecting the two loads in the second thread and four singleton
-instructions each of which protects a single store in the other
-thread.  This correctly eliminates the bug.
+fixes in this case.  The fix contains five critical sections: one
+protecting the two loads in the second thread, and four
+single-instruction sections each of which protects a single store in
+the other thread.  This correctly eliminates the bug.
 
 This test illustrates the effect of state machine specialization.  For
 the instructions between the two loads, the initial single-threaded
