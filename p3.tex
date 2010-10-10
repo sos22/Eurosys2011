@@ -1242,7 +1242,21 @@ This is arguably safe, although not according to the definition used
 in this paper, and can cover a wide variety of bugs with little
 overhead.
 
-\editorial{Something about static analysis and model checking?}
+All of these approaches are primarily dynamic in nature.  There have
+also been many systems which attempt to detect races using static
+analysis, such as \cite{Pratikakis2006} or \cite{Engler2003}, or via
+model checking, such as \cite{Elmas06preciserace}.  These techniques
+have the advantage that the bug to be fixed does not first have to be
+exhibited (and, indeed, they are often used to discover bugs in code
+which has never been run) and have precisely no runtime overhead, so
+are attractive wherever they are applicable.  However, many programs
+have sufficiently complicated structures that a sound static analysis
+is impractical, and they cannot as easily compensate for this by
+taking advantage of any exhibition which might be available or by
+being directed towards fixing a specific bug.  Bugs which can be
+exhibited are likely to be more important than those which have never
+been seen, and so this is often a significant
+limitation. \editorial{...}
 
 \section{Future work}
 
