@@ -52,14 +52,14 @@ IRSB {
 7:   PUT(168) = 0x40030d:I64
 8:   t1 = GET:I64(40)
 9:   PUT(32) = t1
-10:   t6 = DIRTY 1:I1 ::: helper_load_64{0x4af749}(t1,GET:I64(32),GET:I64(168))
+10:   t6 = DIRTY 1:I1 ::: helper_load_64{0x4af7e5}(t1,GET:I64(32),GET:I64(168))
 11:   t2 = t6
 12:   PUT(40) = t2
 13:   PUT(32) = Add64(t1,0x8:I64)
 14:   ------ IMark(0x40030e, 1) ------
 15:   PUT(168) = 0x40030e:I64
 16:   t3 = GET:I64(32)
-17:   t7 = DIRTY 1:I1 ::: helper_load_64{0x4af749}(t3,GET:I64(32),GET:I64(168))
+17:   t7 = DIRTY 1:I1 ::: helper_load_64{0x4af7e5}(t3,GET:I64(32),GET:I64(168))
 18:   t4 = t7
 19:   t5 = Add64(t3,0x8:I64)
 20:   PUT(32) = t5
@@ -97,24 +97,24 @@ CMN for {401ecd;425719;}2:40031b is <400300> branch{(Not Equal((load 0x6a7c74 at
 Ret target is 400325
 Before dropping late stores <400325> leaf{0x0}
 CMN for {400325;401ecd;425719;}2:40030e is <400325> leaf{0x0}
-Keep {400325;401ecd;425719;}2:40030d (<400325> leaf{0x0}) at 0x7f374c27ee78
-Keep {400325;401ecd;425719;}2:400300 (<400300> branch{(Not conditions(0x4, r128, r136, r144, r152)), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c281a58
-Keep {401ecd;425719;}2:400320 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c2a5ad8
-Drop {425719;}2:401ecd (<401ecd> leaf{0x0}); duplicates 0x7f374c27ee78
-Keep {400325;401ecd;425719;}2:4002ee (<400300> branch{(Not Equal(r0, (load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c297398
-Drop {401ecd;425719;}2:40031b (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}); duplicates 0x7f374c2a5ad8
-Drop {}2:425719 (<425719> leaf{0x0}); duplicates 0x7f374c27ee78
-Keep {400325;401ecd;425719;}2:4002fa (<400300> branch{(Not Equal((load Add(0xfffffffffffffffc, r40) at {400325;401ecd;425719;}2:4002fa), (load Add(0xfffffffffffffff8, r40) at {400325;401ecd;425719;}2:4002fd))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c289df8
-Keep {400325;401ecd;425719;}2:400302 (<400307> leaf{(BadAddr 0xf001)}) at 0x7f374c27fcb8
-Drop {400325;401ecd;425719;}2:40030e (<400325> leaf{0x0}); duplicates 0x7f374c27ee78
-Drop {401ecd;425719;}2:400325 (<400325> leaf{0x0}); duplicates 0x7f374c27ee78
-Keep {400325;401ecd;425719;}2:4002f7 (<400300> branch{(Not Equal(r0, (load Add(0xfffffffffffffffc, r40) at {400325;401ecd;425719;}2:4002fa))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c28daf8
-Keep {400325;401ecd;425719;}2:400307 (<400307> leaf{(BadAddr r0)}) at 0x7f374c27b8f8
-Keep {400325;401ecd;425719;}2:4002e5 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c2a25b8
-Keep {400325;401ecd;425719;}2:4002f1 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load Add(0xfffffffffffffffc, r40) at {400325;401ecd;425719;}2:4002fa))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c2928b8
-Keep {400325;401ecd;425719;}2:4002fd (<400300> branch{(Not Equal(r0, (load Add(0xfffffffffffffff8, r40) at {400325;401ecd;425719;}2:4002fd))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c285e38
-Keep {400325;401ecd;425719;}2:4002e4 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c2a38b8
-Drop {400325;401ecd;425719;}2:4002e8 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}); duplicates 0x7f374c2a25b8
+Keep {400325;401ecd;425719;}2:40030d (<400325> leaf{0x0}) at 0x7fe6a1d42e78
+Keep {400325;401ecd;425719;}2:400300 (<400300> branch{(Not conditions(0x4, r128, r136, r144, r152)), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d45a58
+Keep {401ecd;425719;}2:400320 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d69ad8
+Drop {425719;}2:401ecd (<401ecd> leaf{0x0}); duplicates 0x7fe6a1d42e78
+Keep {400325;401ecd;425719;}2:4002ee (<400300> branch{(Not Equal(r0, (load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d5b398
+Drop {401ecd;425719;}2:40031b (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}); duplicates 0x7fe6a1d69ad8
+Drop {}2:425719 (<425719> leaf{0x0}); duplicates 0x7fe6a1d42e78
+Keep {400325;401ecd;425719;}2:4002fa (<400300> branch{(Not Equal((load Add(0xfffffffffffffffc, r40) at {400325;401ecd;425719;}2:4002fa), (load Add(0xfffffffffffffff8, r40) at {400325;401ecd;425719;}2:4002fd))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d4ddf8
+Keep {400325;401ecd;425719;}2:400302 (<400307> leaf{(BadAddr 0xf001)}) at 0x7fe6a1d43cb8
+Drop {400325;401ecd;425719;}2:40030e (<400325> leaf{0x0}); duplicates 0x7fe6a1d42e78
+Drop {401ecd;425719;}2:400325 (<400325> leaf{0x0}); duplicates 0x7fe6a1d42e78
+Keep {400325;401ecd;425719;}2:4002f7 (<400300> branch{(Not Equal(r0, (load Add(0xfffffffffffffffc, r40) at {400325;401ecd;425719;}2:4002fa))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d51af8
+Keep {400325;401ecd;425719;}2:400307 (<400307> leaf{(BadAddr r0)}) at 0x7fe6a1d3f8f8
+Keep {400325;401ecd;425719;}2:4002e5 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d665b8
+Keep {400325;401ecd;425719;}2:4002f1 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load Add(0xfffffffffffffffc, r40) at {400325;401ecd;425719;}2:4002fa))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d568b8
+Keep {400325;401ecd;425719;}2:4002fd (<400300> branch{(Not Equal(r0, (load Add(0xfffffffffffffff8, r40) at {400325;401ecd;425719;}2:4002fd))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d49e38
+Keep {400325;401ecd;425719;}2:4002e4 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d678b8
+Drop {400325;401ecd;425719;}2:4002e8 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}); duplicates 0x7fe6a1d665b8
 CM de-duplication kept 12 nodes and dropped 6
 Read 28M
 Read 28M
@@ -140,18 +140,18 @@ Read 28M
 Read 28M
 Crash in thread 2 signal 11
 Done replay, counter 14909
-Keep {400325;401ecd;425719;}2:40030d (<400325> leaf{0x0}) at 0x7f374c27ee78
-Keep {400325;401ecd;425719;}2:400300 (<400300> branch{(Not conditions(0x4, r128, r136, r144, r152)), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c281a58
-Keep {401ecd;425719;}2:400320 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c2a5ad8
-Keep {400325;401ecd;425719;}2:4002ee (<400300> branch{(Not Equal(r0, (load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c297398
-Keep {400325;401ecd;425719;}2:4002fa (<400300> branch{(Not Equal((load Add(0xfffffffffffffffc, r40) at {400325;401ecd;425719;}2:4002fa), (load Add(0xfffffffffffffff8, r40) at {400325;401ecd;425719;}2:4002fd))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c289df8
-Keep {400325;401ecd;425719;}2:400302 (<400307> leaf{(BadAddr 0xf001)}) at 0x7f374c27fcb8
-Keep {400325;401ecd;425719;}2:4002f7 (<400300> branch{(Not Equal(r0, (load Add(0xfffffffffffffffc, r40) at {400325;401ecd;425719;}2:4002fa))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c28daf8
-Keep {400325;401ecd;425719;}2:400307 (<400307> leaf{(BadAddr r0)}) at 0x7f374c27b8f8
-Keep {400325;401ecd;425719;}2:4002e5 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c2a25b8
-Keep {400325;401ecd;425719;}2:4002f1 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load Add(0xfffffffffffffffc, r40) at {400325;401ecd;425719;}2:4002fa))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c2928b8
-Keep {400325;401ecd;425719;}2:4002fd (<400300> branch{(Not Equal(r0, (load Add(0xfffffffffffffff8, r40) at {400325;401ecd;425719;}2:4002fd))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c285e38
-Keep {400325;401ecd;425719;}2:4002e4 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374c2a38b8
+Keep {400325;401ecd;425719;}2:40030d (<400325> leaf{0x0}) at 0x7fe6a1d42e78
+Keep {400325;401ecd;425719;}2:400300 (<400300> branch{(Not conditions(0x4, r128, r136, r144, r152)), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d45a58
+Keep {401ecd;425719;}2:400320 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d69ad8
+Keep {400325;401ecd;425719;}2:4002ee (<400300> branch{(Not Equal(r0, (load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d5b398
+Keep {400325;401ecd;425719;}2:4002fa (<400300> branch{(Not Equal((load Add(0xfffffffffffffffc, r40) at {400325;401ecd;425719;}2:4002fa), (load Add(0xfffffffffffffff8, r40) at {400325;401ecd;425719;}2:4002fd))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d4ddf8
+Keep {400325;401ecd;425719;}2:400302 (<400307> leaf{(BadAddr 0xf001)}) at 0x7fe6a1d43cb8
+Keep {400325;401ecd;425719;}2:4002f7 (<400300> branch{(Not Equal(r0, (load Add(0xfffffffffffffffc, r40) at {400325;401ecd;425719;}2:4002fa))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d51af8
+Keep {400325;401ecd;425719;}2:400307 (<400307> leaf{(BadAddr r0)}) at 0x7fe6a1d3f8f8
+Keep {400325;401ecd;425719;}2:4002e5 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d665b8
+Keep {400325;401ecd;425719;}2:4002f1 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load Add(0xfffffffffffffffc, r40) at {400325;401ecd;425719;}2:4002fa))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d568b8
+Keep {400325;401ecd;425719;}2:4002fd (<400300> branch{(Not Equal(r0, (load Add(0xfffffffffffffff8, r40) at {400325;401ecd;425719;}2:4002fd))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d49e38
+Keep {400325;401ecd;425719;}2:4002e4 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1d678b8
 CM de-duplication kept 12 nodes and dropped 0
 Pre-fold {400325;401ecd;425719;}2:40030d -> <400325> leaf{0x0}
 Pre-fold {400325;401ecd;425719;}2:400300 -> <400300> branch{(Not conditions(0x4, r128, r136, r144, r152)), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}
@@ -183,19 +183,19 @@ Post-fold {400325;401ecd;425719;}2:4002f1 -> <400300> branch{(Not Equal(0x4ffffa
 Post-fold {400325;401ecd;425719;}2:4002fd -> <400300> branch{0x0, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}
 Post-fold {400325;401ecd;425719;}2:4002fd -> <400300> branch{0x1, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}
 Post-fold {400325;401ecd;425719;}2:4002e4 -> <400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}
-Keep {400325;401ecd;425719;}2:40030d (<400325> leaf{0x0}) at 0x7f374b6b58f8
-Keep {400325;401ecd;425719;}2:400300 (<400300> branch{0x0, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374b6b3c18
-Keep {400325;401ecd;425719;}2:400300 (<400300> branch{0x1, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374aadd198
-Keep {401ecd;425719;}2:400320 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374b6aa718
-Keep {400325;401ecd;425719;}2:4002ee (<400300> branch{(Not Equal(0x0, (load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374b6b0c18
-Drop {400325;401ecd;425719;}2:4002fa (<400300> branch{0x1, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}); duplicates 0x7f374aadd198
-Keep {400325;401ecd;425719;}2:400302 (<400307> leaf{(BadAddr 0xf001)}) at 0x7f374aadf678
-Drop {400325;401ecd;425719;}2:4002f7 (<400300> branch{0x1, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}); duplicates 0x7f374aadd198
-Drop {400325;401ecd;425719;}2:400307 (<400307> leaf{(BadAddr 0xf001)}); duplicates 0x7f374aadf678
-Keep {400325;401ecd;425719;}2:4002e5 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374b6b0518
-Keep {400325;401ecd;425719;}2:4002f1 (<400300> branch{(Not Equal(0x4ffffa000000000, (load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374b6b14d8
-Drop {400325;401ecd;425719;}2:4002fd (<400300> branch{0x0, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}); duplicates 0x7f374b6b3c18
-Drop {400325;401ecd;425719;}2:4002fd (<400300> branch{0x1, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}); duplicates 0x7f374aadd198
-Keep {400325;401ecd;425719;}2:4002e4 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7f374b6b0018
+Keep {400325;401ecd;425719;}2:40030d (<400325> leaf{0x0}) at 0x7fe6a11798f8
+Keep {400325;401ecd;425719;}2:400300 (<400300> branch{0x0, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1177c18
+Keep {400325;401ecd;425719;}2:400300 (<400300> branch{0x1, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a05a1198
+Keep {401ecd;425719;}2:400320 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a116e718
+Keep {400325;401ecd;425719;}2:4002ee (<400300> branch{(Not Equal(0x0, (load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1174c18
+Drop {400325;401ecd;425719;}2:4002fa (<400300> branch{0x1, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}); duplicates 0x7fe6a05a1198
+Keep {400325;401ecd;425719;}2:400302 (<400307> leaf{(BadAddr 0xf001)}) at 0x7fe6a05a3678
+Drop {400325;401ecd;425719;}2:4002f7 (<400300> branch{0x1, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}); duplicates 0x7fe6a05a1198
+Drop {400325;401ecd;425719;}2:400307 (<400307> leaf{(BadAddr 0xf001)}); duplicates 0x7fe6a05a3678
+Keep {400325;401ecd;425719;}2:4002e5 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1174518
+Keep {400325;401ecd;425719;}2:4002f1 (<400300> branch{(Not Equal(0x4ffffa000000000, (load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a11754d8
+Drop {400325;401ecd;425719;}2:4002fd (<400300> branch{0x0, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}); duplicates 0x7fe6a1177c18
+Drop {400325;401ecd;425719;}2:4002fd (<400300> branch{0x1, <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}); duplicates 0x7fe6a05a1198
+Keep {400325;401ecd;425719;}2:4002e4 (<400300> branch{(Not Equal((load 0x6a7c74 at {400325;401ecd;425719;}2:4002f1), (load 0x6a7c74 at {400325;401ecd;425719;}2:4002e8))), <400307> leaf{(BadAddr 0xf001)}, <400325> leaf{0x0}}) at 0x7fe6a1174018
 CM de-duplication kept 9 nodes and dropped 5
 Suggested atomic block: 0 unknown, 0 bad, 1583 good, local [{400325;401ecd;425719;}2:4002f1, {400325;401ecd;425719;}2:4002e8], remote {[{40a181;4001f9;}1:400350]}

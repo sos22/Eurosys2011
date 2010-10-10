@@ -1,85 +1,85 @@
-    0.000000 start
-    0.451473 read initial snapshot
-    0.902600 have memory trace of crashed thread
-    0.902743 built rip trace
-    0.902801 have proximal cause
-    0.902937 built cmn for {40032f;401eed;425739;}2:400315
-    0.902946 rendered cmn for {40032f;401eed;425739;}2:400315
-    0.903024 built cmn for {40032f;401eed;425739;}2:400310
-    0.903032 rendered cmn for {40032f;401eed;425739;}2:400310
-    0.903120 built cmn for {40032f;401eed;425739;}2:40030b
-    0.903128 rendered cmn for {40032f;401eed;425739;}2:40030b
-    0.903175 built cmn for {40032f;401eed;425739;}2:400306
-    0.903183 rendered cmn for {40032f;401eed;425739;}2:400306
-    0.903324 built cmn for {40032f;401eed;425739;}2:400304
-    0.903340 rendered cmn for {40032f;401eed;425739;}2:400304
-    0.903470 built cmn for {40032f;401eed;425739;}2:400301
-    0.903482 rendered cmn for {40032f;401eed;425739;}2:400301
-    0.903607 built cmn for {40032f;401eed;425739;}2:4002fe
-    0.903618 rendered cmn for {40032f;401eed;425739;}2:4002fe
-    0.903737 built cmn for {40032f;401eed;425739;}2:4002fb
-    0.903748 rendered cmn for {40032f;401eed;425739;}2:4002fb
-    0.903877 built cmn for {40032f;401eed;425739;}2:4002f5
-    0.903889 rendered cmn for {40032f;401eed;425739;}2:4002f5
-    0.904021 built cmn for {40032f;401eed;425739;}2:4002f2
-    0.904032 rendered cmn for {40032f;401eed;425739;}2:4002f2
-    0.904190 built cmn for {40032f;401eed;425739;}2:4002ec
-    0.904202 rendered cmn for {40032f;401eed;425739;}2:4002ec
-    0.904372 built cmn for {40032f;401eed;425739;}2:4002e8
-    0.904493 rendered cmn for {40032f;401eed;425739;}2:4002e8
-    0.904644 built cmn for {40032f;401eed;425739;}2:4002e5
-    0.904655 rendered cmn for {40032f;401eed;425739;}2:4002e5
-    0.904723 built cmn for {40032f;401eed;425739;}2:4002e4
-    0.904734 rendered cmn for {40032f;401eed;425739;}2:4002e4
-    0.904818 built cmn for {401eed;425739;}2:40032a
-    0.904829 rendered cmn for {401eed;425739;}2:40032a
-    0.904877 built cmn for {401eed;425739;}2:400325
-    0.904887 rendered cmn for {401eed;425739;}2:400325
-    0.904938 built cmn for {40032f;401eed;425739;}2:400320
-    0.904946 rendered cmn for {40032f;401eed;425739;}2:400320
-    0.904999 built cmn for {40032f;401eed;425739;}2:40031f
-    0.905007 rendered cmn for {40032f;401eed;425739;}2:40031f
-    0.905020 built crash machine
-    0.905190 Done CMN de-duplicate 1
+    0.000001 start
+    0.404348 read initial snapshot
+    0.856247 have memory trace of crashed thread
+    0.856392 built rip trace
+    0.856455 have proximal cause
+    0.856586 built cmn for {40032f;401eed;425739;}2:400315
+    0.856595 rendered cmn for {40032f;401eed;425739;}2:400315
+    0.856672 built cmn for {40032f;401eed;425739;}2:400310
+    0.856681 rendered cmn for {40032f;401eed;425739;}2:400310
+    0.856767 built cmn for {40032f;401eed;425739;}2:40030b
+    0.856775 rendered cmn for {40032f;401eed;425739;}2:40030b
+    0.856822 built cmn for {40032f;401eed;425739;}2:400306
+    0.856830 rendered cmn for {40032f;401eed;425739;}2:400306
+    0.856966 built cmn for {40032f;401eed;425739;}2:400304
+    0.856982 rendered cmn for {40032f;401eed;425739;}2:400304
+    0.857112 built cmn for {40032f;401eed;425739;}2:400301
+    0.857123 rendered cmn for {40032f;401eed;425739;}2:400301
+    0.857242 built cmn for {40032f;401eed;425739;}2:4002fe
+    0.857254 rendered cmn for {40032f;401eed;425739;}2:4002fe
+    0.857373 built cmn for {40032f;401eed;425739;}2:4002fb
+    0.857384 rendered cmn for {40032f;401eed;425739;}2:4002fb
+    0.857518 built cmn for {40032f;401eed;425739;}2:4002f5
+    0.857529 rendered cmn for {40032f;401eed;425739;}2:4002f5
+    0.857661 built cmn for {40032f;401eed;425739;}2:4002f2
+    0.857672 rendered cmn for {40032f;401eed;425739;}2:4002f2
+    0.857829 built cmn for {40032f;401eed;425739;}2:4002ec
+    0.857840 rendered cmn for {40032f;401eed;425739;}2:4002ec
+    0.858005 built cmn for {40032f;401eed;425739;}2:4002e8
+    0.858128 rendered cmn for {40032f;401eed;425739;}2:4002e8
+    0.858276 built cmn for {40032f;401eed;425739;}2:4002e5
+    0.858287 rendered cmn for {40032f;401eed;425739;}2:4002e5
+    0.858357 built cmn for {40032f;401eed;425739;}2:4002e4
+    0.858367 rendered cmn for {40032f;401eed;425739;}2:4002e4
+    0.858451 built cmn for {401eed;425739;}2:40032a
+    0.858462 rendered cmn for {401eed;425739;}2:40032a
+    0.858510 built cmn for {401eed;425739;}2:400325
+    0.858520 rendered cmn for {401eed;425739;}2:400325
+    0.858571 built cmn for {40032f;401eed;425739;}2:400320
+    0.858578 rendered cmn for {40032f;401eed;425739;}2:400320
+    0.858631 built cmn for {40032f;401eed;425739;}2:40031f
+    0.858639 rendered cmn for {40032f;401eed;425739;}2:40031f
+    0.858652 built crash machine
+    0.858821 Done CMN de-duplicate 1
 
-    1.122671 built interesting addresses set
-    1.288844 collected interesting address logs
-    1.288873 removing constant references from {40032f;401eed;425739;}2:40031f
-    1.288881 removing constant references from {40032f;401eed;425739;}2:4002e4
-    1.288886 removing constant references from {40032f;401eed;425739;}2:400301
-    1.288892 removing constant references from {40032f;401eed;425739;}2:4002e8
-    1.288897 removing constant references from {40032f;401eed;425739;}2:4002ec
-    1.288902 removing constant references from {40032f;401eed;425739;}2:400315
-    1.288908 removing constant references from {40032f;401eed;425739;}2:400304
-    1.288913 removing constant references from {40032f;401eed;425739;}2:4002f2
-    1.288919 removing constant references from {401eed;425739;}2:40032a
-    1.288924 removing constant references from {40032f;401eed;425739;}2:4002fe
-    1.288930 removing constant references from {40032f;401eed;425739;}2:4002fb
-    1.288935 removing constant references from {40032f;401eed;425739;}2:4002f5
-    1.288941 Done remove constant references
+    1.075264 built interesting addresses set
+    1.241765 collected interesting address logs
+    1.241794 removing constant references from {40032f;401eed;425739;}2:40031f
+    1.241802 removing constant references from {40032f;401eed;425739;}2:4002e4
+    1.241807 removing constant references from {40032f;401eed;425739;}2:400301
+    1.241812 removing constant references from {40032f;401eed;425739;}2:4002e8
+    1.241818 removing constant references from {40032f;401eed;425739;}2:4002ec
+    1.241823 removing constant references from {40032f;401eed;425739;}2:400315
+    1.241828 removing constant references from {40032f;401eed;425739;}2:400304
+    1.241834 removing constant references from {40032f;401eed;425739;}2:4002f2
+    1.241839 removing constant references from {401eed;425739;}2:40032a
+    1.241844 removing constant references from {40032f;401eed;425739;}2:4002fe
+    1.241850 removing constant references from {40032f;401eed;425739;}2:4002fb
+    1.241855 removing constant references from {40032f;401eed;425739;}2:4002f5
+    1.241861 Done remove constant references
 
-    1.289006 Done CMN de-duplicate 2
+    1.241925 Done CMN de-duplicate 2
 
-    1.683947 Done fold registers.
+    1.635421 Done fold registers.
 
-    1.684074 Done CMN de-duplicate 3
+    1.635510 Done CMN de-duplicate 3
 
-    1.684084 calculating critical sections for {40032f;401eed;425739;}2:40031f
-    1.684096 calculated critical sections for {40032f;401eed;425739;}2:40031f
-    1.684106 calculating critical sections for {40032f;401eed;425739;}2:4002e4
-    1.741189 calculated critical sections for {40032f;401eed;425739;}2:4002e4
-    1.741234 calculating critical sections for {40032f;401eed;425739;}2:400301
-    1.741249 calculated critical sections for {40032f;401eed;425739;}2:400301
-    1.741258 calculating critical sections for {40032f;401eed;425739;}2:4002e8
-    1.788140 calculated critical sections for {40032f;401eed;425739;}2:4002e8
-    1.788187 calculating critical sections for {40032f;401eed;425739;}2:400315
-    1.788199 calculated critical sections for {40032f;401eed;425739;}2:400315
-    1.788209 calculating critical sections for {40032f;401eed;425739;}2:4002f2
-    1.823869 calculated critical sections for {40032f;401eed;425739;}2:4002f2
-    1.823920 calculating critical sections for {401eed;425739;}2:40032a
-    1.887248 calculated critical sections for {401eed;425739;}2:40032a
-    1.887296 calculating critical sections for {40032f;401eed;425739;}2:4002f5
-    1.917379 calculated critical sections for {40032f;401eed;425739;}2:4002f5
-    1.917472 all done
-    1.917477 By class: initial snapshot 0.451373, replay 1.228862, building CM 0.002440, gen fixes 0.233341
+    1.635521 calculating critical sections for {40032f;401eed;425739;}2:40031f
+    1.635531 calculated critical sections for {40032f;401eed;425739;}2:40031f
+    1.635540 calculating critical sections for {40032f;401eed;425739;}2:4002e4
+    1.692603 calculated critical sections for {40032f;401eed;425739;}2:4002e4
+    1.692654 calculating critical sections for {40032f;401eed;425739;}2:400301
+    1.704225 calculated critical sections for {40032f;401eed;425739;}2:400301
+    1.704261 calculating critical sections for {40032f;401eed;425739;}2:4002e8
+    1.751875 calculated critical sections for {40032f;401eed;425739;}2:4002e8
+    1.751925 calculating critical sections for {40032f;401eed;425739;}2:400315
+    1.751937 calculated critical sections for {40032f;401eed;425739;}2:400315
+    1.751947 calculating critical sections for {40032f;401eed;425739;}2:4002f2
+    1.841170 calculated critical sections for {40032f;401eed;425739;}2:4002f2
+    1.841226 calculating critical sections for {401eed;425739;}2:40032a
+    1.905016 calculated critical sections for {401eed;425739;}2:40032a
+    1.905064 calculating critical sections for {40032f;401eed;425739;}2:4002f5
+    1.996043 calculated critical sections for {40032f;401eed;425739;}2:4002f5
+    1.996134 all done
+    1.996139 By class: initial snapshot 0.404248, replay 1.227500, building CM 0.002422, gen fixes 0.360575
 
