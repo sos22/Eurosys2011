@@ -81,72 +81,63 @@ Synchronization, automated bug-fixing
 
 The increasing availability of multi-core and multi-processor systems
 is driving a trend towards software with a greater degree of
-parallelism.  While potentially paying dividends in improved
+parallelism, but, while potentially paying dividends in improved
 responsiveness, throughput, and power consumption, multi-threaded
 programming has an unfortunate tendency to lead to very subtle bugs.
-Even worse, these bugs are often dependent on the low-level details of
-the hardware on which the software is being run, and so can be hard to
-reproduce on any but a small subset of available computers.  This
-makes testing for these bugs difficult, so they are more likely than
-other kinds of bugs to remain undetected in shipped software.  It can
-also complicates the process of developing a fix, and so once detected
-such bugs remain unfixed for much longer.
-
-A number of techniques have been proposed for reducing the likelihood
-of these multi-threading bugs, such as transactional
-memory\cite{Shavit1997} or automatic parallelization\cite{Bacon1994}.
-These could potentially reduce the incidence of such bugs in new
-software, but it seems likely that they will not be universally
-deployed for some time, and so there is a need for techniques which
+Even worse, it is often difficult to trigger these bugs reliably,
+which means that they are less likely to be discovered by testing and
+harder to fix once they have been discovered.  A number of techniques
+have been proposed for reducing the likelihood of such errors,
+including transactional memory\cite{Shavit1997} and automatic
+parallelization\cite{Bacon1994}, but, while potentially greatly
+reducing the incidence of synchronization mistakes in new software,
+they cannot be directly applied to the large body of existing
+concurrent software.  There is therefore a need for techniques which
 can assist in fixing bugs in programs written using the currently
-widely-used shared memory model of concurrency.
-
-In this paper, we introduce SLI, or Speculative Lock Insertion, as one
-potential approach to this problem.  SLI automatically fixes
-synchronization bugs once they have been observed, given only the
-program binary and a reproduction of the bug, generating a modified
-binary whose behavior is identical to that of the original except that
-it no longer suffers from the bug.  Furthermore, the fixes will
-usually have very low performance overhead, and the process of
-generating the fix itself takes only a moderate amount of time
-(ranging from seconds in simple cases to a few hours in more
-complicated ones).  SLI does not depend on programmer annotations or
-semantic knowledge of the program's intended behavior, but can make
-use of such information when it is available.
+widely-used shared memory model of concurrency.  In this paper, we
+introduce SLI, or Speculative Lock Insertion, as one potential
+approach to this problem.  SLI automatically fixes observed
+synchronization bugs, given only the program binary and a reproduction
+of the bug, generating a modified binary whose behavior is identical
+to that of the original except that it no longer suffers from the bug.
+Furthermore, the fixes will usually have very low performance
+overhead, and the process of generating the fix itself takes only a
+moderate amount of time (ranging from seconds in simple cases to a few
+hours in more complicated ones).  SLI does not depend on programmer
+annotations or semantic knowledge of the program's intended behavior,
+but can make use of such information when it is available.
 
 Our approach consists of several key phases.  First, the bug must be
-captured under a deterministic replay system.  The exact details of
-how this is done do not matter, and so existing high-performance
-replay systems such as PRES\cite{Park2009} could be used
-straightforwardly.  The captured trace is then examined in conjunction
-with the program binary so as to build a series of approximations of
-the parts of the program's behavior which are most closely relevant to
-the bug, in a process similar to program slicing\cite{Weiser1979}.
-These approximations can be used to predict whether executing a
-particular subset of a program's instructions atomically would have
-led to a crash, and this can then be leveraged to determine what
-additional synchronization would have prevented the crash from
-happening.  This synchronization can then be added to the program
-automatically using a simple binary rewriter, fixing the observed bug.
+captured under a deterministic replay system such as
+PRES\cite{Park2009} or ReVirt\cite{Dunlap2002}.  The captured trace is
+then examined in conjunction with the program binary, building a
+series of approximations of the parts of the program's behavior which
+are most closely relevant to the bug in a process similar to program
+slicing\cite{Weiser1979}.  These approximations can be used to predict
+whether executing a particular subset of a program's instructions
+atomically would have led to a crash, and this can be leveraged to
+determine what additional synchronization would have prevented the
+crash from happening.  This synchronization can then be added to the
+program automatically using a simple binary rewriter, fixing the
+observed bug.
 
-The fixes generated by SLI are safe (ignoring possible bugs in the
-implementation), even in the presence of most kinds of analysis
-errors, in the sense that any behavior which is possible with a fix
-applied is also possible when the fix is not applied, assuming a model
-of program execution in which instructions can be arbitrarily delayed.
-This corresponds to the model presented to user-level applications by
-most non-realtime operating systems, including Linux and Windows, and
-so this weak model is likely to be sufficient for many pieces of
-widely used software.  Of course, possible is not always the same
-thing as desirable, and so, for instance, it might be that a fix
-causes certain operations which would otherwise always succeed to
-always time out, and this might render the software unusable, without
-being unsafe within this definition.  Even identifying such
-time-dependent correctness constraints is difficult without semantic
-knowledge of the program's intended behavior, and automatically
-determining whether a fix causes some to be violated is even more
-challenging, and so it seems likely that this weakness will be
-inherent in any scheme which fixes bugs without reference to a
+The fixes generated by SLI are safe, in the sense that any behavior
+which is possible with a fix applied is also possible when the fix is
+not applied, assuming a model of program execution in which
+instructions can be arbitrarily delayed.  This corresponds to the
+model presented to user-level applications by most non-realtime
+operating systems, including Linux and Windows, and so is likely to be
+sufficient for many pieces of widely used software.
+
+Of course, possible is not always the same as desirable.  For example,
+it might be that a fix causes certain operations which would otherwise
+succeed to always time out, and this might render the software
+unusable without being unsafe within this definition.  Identifying
+such time-dependent correctness constraints is difficult without
+semantic knowledge of the program's intended behavior, and
+automatically determining whether a fix causes some to be violated is
+even more challenging, and so it seems likely that this weakness will
+be inherent in any scheme which fixes bugs without reference to a
 manually-generated specification of the fixed program.\editorial{Not
   very happy with that phrasing.}
 
@@ -155,39 +146,36 @@ manually-generated specification of the fixed program.\editorial{Not
 Before SLI starts, the bug to be fixed must first be captured using a
 deterministic replay system (DRS).  This work does not attempt to
 advance the state of the art in DRSes, but does depend on them in
-order to be feasible, and so we discuss them briefly here.
-
-The only requirement we place on the choice of DRS is that it must
-capture an execution sufficiently precisely that the relevant fragment
-of execution can later be replayed as many times as necessary and
-produce the same sequence of memory accesses every time.  This
+order to be feasible, and so we discuss them briefly here.  The only
+requirement we place on the choice of DRS is that it must allow us to
+replay the relevant fragment of execution as many times as necessary
+and produce the same sequence of memory accesses each time.  This
 captured execution does not need to be precisely the same as the
-original crashing execution, but the more different it is the more
-likely it is that SLI will fix the wrong bug.  The most obvious way of
-capturing an execution, used in our prototype, is to simply record
-every single memory access issued by the program, which is effective
-but has extremely high overhead.  This could be reduced by using a
-more intelligent recording mechanism such as PRES\cite{Park2009} or
-ODR\cite{Altekar2009}, both of which record only a few critical events
-and discover the rest only when they are needed during replay.  This
-can reduce overhead to a level where it is sensible to run with
-recording enabled by default.  An extreme form of this approach is
-provided by ESD\cite{Zamfir2010}, which logs nothing at all and
-instead attempts to recreate the path to failure given just the state
-of the program at the time of the failure.  In a slightly different
-context, an automatic program exerciser such as
-CHESS\cite{Musuvathi2008} could be used to detect completely new bugs,
-which could then be passed to SLI to be automatically characterized
-and fixed.\editorial{I want to use the phrase closed-loop here}
+original crashing execution (although excessive errors here could lead
+to SLI fixing the wrong bug).  The most obvious way of capturing an
+execution, used in our prototype, is to simply record every single
+memory access issued by the program, which is effective but has
+extremely high overhead.  This could be reduced by using a more
+intelligent recording mechanism such as PRES or ODR\cite{Altekar2009},
+both of which record only a few critical events and discover the rest
+only when they are needed during replay.  This can reduce overhead to
+a level where it is sensible to run with recording enabled by default.
+ESD\cite{Zamfir2010} is an extreme form of this approach, and logs
+nothing at all but instead attempts to recreate the path to failure
+given just the state of the program at the time of the crash.  In a
+slightly different context, an automatic program exerciser such as
+CHESS\cite{Musuvathi2008} could be used to detect unknown bugs, which
+could then be passed to SLI to be automatically characterized and
+fixed.\editorial{I want to use the phrase closed-loop here}
 
 \section{Deriving a single-threaded explanation of the bug}
 \label{sect:build_state_machines}
 
 The first phase of our algorithm is to derive an explanation of the
-bug which considers only the behavior of the thread which crashed.
-The result of this analysis is a series of acyclic state machines,
+bug considering only the behavior of the thread which crashed.  The
+result of this analysis is a series of acyclic state machines,
 corresponding to instructions executed by the crashed thread towards
-the end of its life, which can predict whether the thread will crash
+the end of its life, which predict whether the thread will crash
 starting from that instruction given a particular state of memory and
 registers.  These machines are approximations of the program's real
 behavior, exhibiting both false positive and false negative errors,
@@ -196,50 +184,47 @@ execution when a crash is possible.  It would be possible to design an
 algorithm which avoids either or both of these classes of errors, but
 doing so would not necessarily be helpful.
 
-Consider false positives first, or errors where a state machine
-predicts a crash when none is possible.  This will cause the final fix
-to eliminate some schedules which would have been permitted with a
-perfect characterization, but, provided that there is always some
-schedule available (see section \ref{sect:deadlocks}), this cannot
-cause a correct program to become incorrect.  SLI can therefore
-tolerate some level of false positives in the characterization without
-producing incorrect fixes.
-
-Likewise, the effect of a false negative is to only partially resolve
-a bug, so that some possible manifestations remain possible.  This is
-indistinguishable from there simply being several bugs, and so,
-provided that the characterization is sufficiently accurate to predict
-a crash for the captured execution, false negatives do not prevent SLI
-from fulfilling its goal of fixing the observed crash.\editorial{Feels
-  glib.}
+Consider false positives, where a state machine predicts a crash when
+none is possible, first.  These will cause the final fix to eliminate
+some schedules which would have been permitted with a perfect
+characterization, but, provided that there is always some schedule
+available (see section \ref{sect:deadlocks}), this cannot cause a
+correct program to become incorrect.  SLI can therefore tolerate some
+level of false positives in the characterization without producing
+incorrect fixes.  Likewise, the effect of a false negative is to only
+partially resolve a bug, so that some possible manifestations remain
+possible.  This is indistinguishable from there simply being several
+bugs, and so, provided that the characterization is sufficiently
+accurate to predict a crash for the captured execution, false
+negatives do not prevent SLI from fulfilling its goal of fixing the
+observed crash.\editorial{Feels glib.}
 
 As such, a perfect characterization is not only difficult, but also
 unhelpful, and we do not attempt to produce one.  This allows us to
 use much simpler analyses and to produce much simpler
 characterizations, which makes it more likely that the system will be
-able to generate a correct fix.
+able to generate a correct fix.  When we do make approximations in the
+characterization, we attempt to ensure that the captured execution
+remains possible, and apply coarser approximation to executions which
+are very different from the captured one.  The intuition behind this
+is that the captured execution is the only one which is known to be
+relevant to the bug, while all of the other paths discovered by static
+analysis are speculative: we do not know if they can ever happen at
+all, much less if they are relevant to the observed behavior.  It
+therefore makes sense that, when an approximation must be made in
+order to reduce execution time, or simply to make an analysis
+feasible, it should be made on these speculative paths.
 
-When we do make approximations in the characterization, we attempt to
-ensure that the captured execution remains possible, and apply coarser
-approximation to executions which are very different from the captured
-one.  The intuition behind this is that the captured execution is the
-only one which is known to be relevant to the bug, while all of the
-other paths discovered by static analysis are speculative: we do not
-know if they can ever happen at all, much less if they are relevant to
-the observed behavior.  It therefore makes sense that, when an
-approximation must be made in order to reduce execution time, or
-simply to make an analysis feasible, it should be made on these
-speculative paths.
-
-Similarly, we also attempt to make the machine more accurate at points
-which are nearer to the crash, and approximate more aggressively at
-points which occurred earlier in the execution.  There are two main
-reasons for this.  First, details which occur shortly before the crash
-are more likely to be directly relevant to it.  Second, the time taken
-by some of the analysis steps involved in producing a state machine
-grow more than linearly in the distance to the crash, and so more
-aggressive simplification is necessary in order to keep the analysis
-tractable.\editorial{Not well explained}
+%% Similarly, we also attempt to make the machine more accurate at
+%% points which are nearer to the crash, and approximate more
+%% aggressively at points which occurred earlier in the execution.
+%% There are two main reasons for this.  First, details which occur
+%% shortly before the crash are more likely to be directly relevant to
+%% it.  Second, the time taken by some of the analysis steps involved
+%% in producing a state machine grow more than linearly in the
+%% distance to the crash, and so more aggressive simplification is
+%% necessary in order to keep the analysis tractable.\editorial{Not
+%% well explained}
 
 \subsection{The proximal cause}
 \label{sect:prox_cause}
