@@ -405,9 +405,9 @@ dynamically-executed instructions, and a state machine can hence be
 derived for the root of the graph and the original branch instruction.
 
 \begin{figure*}[t]
-\subfigure[Instruction D]{\includegraphics[scale=0.35]{diagrams/statementD.pdf}
+\subfigure[Instruction D]{\includegraphics[scale=0.35,trim=0 60mm 0 40mm]{diagrams/statementD.pdf}
   \label{fig:state_machines_instr_d}}
-\subfigure[Instruction A]{\includegraphics[scale=0.35]{diagrams/statementA.pdf}
+\subfigure[Instruction A]{\includegraphics[scale=0.35,trim=0 60mm 0 40mm]{diagrams/statementA.pdf}
   \label{fig:state_machines_instr_a}}
 \caption{State machines produced for the example program}
 \end{figure*}
@@ -896,8 +896,8 @@ scale up to more complicated bugs in a reasonably straightforward
 way\editorial{Not sure I believe that}.  Second, for the very
 long-running \verb|thunderbird| test the running time is completely
 dominated by the phases which involve replaying the log.  This
-suggests that improvements to our replay engine would significantly
-performance gains.
+suggests that improvements to our replay engine would yield
+significant performance gains.
 
 Figure \ref{fig:timesignoringreplay} shows how much time is taken by
 the various phases ignoring the time taken to replay the log file.
@@ -909,9 +909,9 @@ less than ten seconds).  This is because the artificial test cases run
 the buggy code in a tight loop, so the log contains many instances of
 the buggy code and many stores to the relevant addresses, whereas
 \verb|thunderbird| runs it only once.  The state machines must
-therefore by evaluated in far fewer contexts in the artificial bugs,
-which dramatically reduces the time taken by the analysis.  This is an
-encouraging result: most bugs occur in code which is executed
+therefore by evaluated in far more contexts in the artificial bugs,
+which dramatically increases the time taken by the analysis.  This is
+an encouraging result: most bugs occur in code which is executed
 infrequently, and so it would be reasonable to expect that most bugs
 would have analysis time more similar to the \verb|thunderbird| bug
 than to the artificial ones.
@@ -936,7 +936,7 @@ before attempting to derive a fix.  For implementation reasons, our
 prototype will always backtrack to a branch instruction, and for the
 above tests we limited this backtracking to ten branches.  Figure
 \ref{fig:eval:backtrack} shows the effect of changing this parameter
-upon the time taken by the non-replay components of the
+on the time taken by the non-replay components of the
 \verb|thunderbird| test (the replay components were unchanged).  It
 can be seen that the time taken increases rapidly as the distance
 which we backtrack increases, by a factor of more than 500 when going
@@ -1200,12 +1200,12 @@ the bug.
 
 \section{Related work}\editorial{This is a bit of a bestiary.  Could do with a bit more analysis.}
 
-There have been a number of previous systems which tackle similar
-problems.  Most recently, Kivati\cite{Chew2010a} attempts to fix
-single-variable atomicity violations automatically by combining a
-static analysis pass with some runtime support.  The result is able to
-prevent many common kinds of race-like bugs with low overhead.  There
-are several important differences between their approach and ours:
+A number of previous systems have tackled similar problems.  Most
+recently, Kivati\cite{Chew2010a} attempts to fix single-variable
+atomicity violations automatically by combining a static analysis pass
+with some runtime support.  The result is able to prevent many common
+kinds of race-like bugs with low overhead.  There are several
+important differences between their approach and ours:
 
 \begin{itemize}
 \item SLI is only activated once a bug has been observed, whereas
@@ -1215,7 +1215,7 @@ are several important differences between their approach and ours:
   whereas, once generated, SLI fixes can stand alone without any of
   the rest of the SLI infrastructure.
 \item Kivati requires access to the program's source code during the
-  initial static analysis phase, whereas SLI only requires the binary.
+  initial static analysis phase, whereas SLI requires only the binary.
 \item SLI can be applied to a wider class of bugs than Kivati, such as
   the \verb|twovar| example described above.
 \end{itemize}
@@ -1229,16 +1229,16 @@ correct despite the misbehavior of the incorrect one.  This might,
 for instance, be useful if the correct thread is controlled by an
 application while the incorrect one is controlled by a library which
 the application writer is unable to modify.  As with Kivati, they do
-not target specific bugs.
+not target specific bugs.\editorial{...}
 
-Atom-Aid\cite{Lucia2009} is another approach to race bug
-mitigation, in this case using hardware transactional memory support.
-Their approach is to bundle sequences of memory accesses into
-transactions according to some heuristics, effectively reducing the
+Atom-Aid\cite{Lucia2009} also attempts to mitigate race bugs, in
+this case by using hardware transactional memory to
+bundle sequences of memory accesses into
+transactions according to some heuristics.  This reduces the
 number of permissible schedules and hence the scope for memory
 ordering related bugs.  Provided the necessary hardware is available,
-this is simple and reasonably efficient, and should also eliminate a
-reasonable selection of non-trivial bugs.  The main downside of this
+this is simple and reasonably efficient, and should eliminate a
+reasonable selection of non-trivial bugs.  The main downside of the
 approach is that it requires non-standard (and presently non-existent)
 hardware, which makes it less practically useful than it otherwise
 would be.
