@@ -867,8 +867,7 @@ over three on average, and in no case more than fourteen).
 Furthermore, this time is dominated by the time spent replaying the
 collected log files (especially for the most realistic bug,
 \verb|thunderbird|), suggesting that improvements to our presently
-very na\"ive replay engine would yield significant overall performance
-gains.
+very na\"ive replay engine would yield significant performance gains.
 
 \begin{figure*}
 \subfigure[Length of the phases, as fractions of the entire
@@ -929,23 +928,23 @@ however (from eight to thirteen seconds), mostly because the time
 taken to reproduce the bug varied and so the size of the log which had
 to be parsed also varied.  Similar results were obtained for the other
 bugs.\editorial{Not sure this is all that interesting, or that I've
-  phrased it very well...}.
+  phrased it very well...}
 
 \subsection{Description of test bugs}
 \label{sect:bug_descr}
 
 We now describe our test bugs in more detail.
 
-\verb|toctou|, a simple two-thread time-of-check, time-of-use race.
+\verb|toctou| is a simple two-thread time-of-check, time-of-use race.
 In this test, one thread loops incrementing a counter, while another
 thread repeatedly issues pairs of loads of the counter and asserts
 that the loads returned the same value.  Our prototype generates a
-single suggested fix consisting of two critical sections.  One of
-these sections protects the write-back of the incremented counter in
-the first thread, while the other protects the two loads in the second
-thread.  This is a correct and minimal fix.
+single suggested fix consisting of two critical sections, one
+protecting the write-back of the incremented counter in the first
+thread and the other protecting the two loads in the second thread.
+This is a correct and minimal fix.
 
-\verb|twovar|, a two-variable atomicity violation.  In this test,
+\verb|twovar| is a two-variable atomicity violation.  In this test,
 there are two global variables, and one thread loops setting both to
 five and then setting both to seven while another thread loops loading
 both and asserting them to be equal.  SLI produces a single suggested
@@ -995,7 +994,7 @@ meant that \verb|l2| could not occur at any point in the program's
 execution, so the second thread would not be able to make any progress
 at all.
 
-\verb|publish|, a broken implementation of the publish pattern.  In
+\verb|publish| is a broken implementation of the publish pattern.  In
 this pattern, a structure is initialised by one thread and then
 published by writing its address into a global pointer.  Other threads
 then occasionally read this global pointer and, if it contains a
@@ -1036,15 +1035,15 @@ fix prioritisation heuristic.\smh{good example of a bad fix which is
   actually good.}\editorial{ref earlier discussion of privatize
   example?}
 
-\verb|privatize|.  This is the converse of \verb|publish|: a thread is
+\verb|privatize| is the converse of \verb|publish|: a thread is
 attempting to make a structure private, and does it incorrectly.  It
 is similar to the example program in figure
 \ref{fig:broken_privatize}, which has already been extensively
 discussed.
 
-\verb|glibc| This is a kernel of glibc bug 2644 \cite{glibc2644},
-which affected versions of glibc up to 2.5 and could lead to a crash
-if multiple threads were shut down at the same time.  Somewhat
+\verb|glibc| is a kernel of glibc bug 2644 \cite{glibc2644}, which
+affected versions of glibc up to 2.5 and could lead to a crash if
+multiple threads were shut down at the same time.  Somewhat
 simplified, the code looked like this:
 
 \begin{verbatim}
