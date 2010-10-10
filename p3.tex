@@ -844,10 +844,10 @@ hour and a half.  This data also shows that the prototype avoids state
 machine explosion, generating only a small number of distinct state
 machines, each of which has only a small number of states (a little
 over three on average, and in no case more than fourteen).
-Furthermore, this time is dominated by the time spent replaying the
-collected log files (especially for the most realistic bug,
-\verb|thunderbird|), suggesting that improvements to our presently
-very na\"ive replay engine would yield significant performance gains.
+Furthermore, the time taken is dominated by the time spent replaying
+the log file (especially for the most realistic bug,
+\verb|thunderbird|), suggesting that improvements to our replay engine
+would yield significant performance gains.
 
 \begin{figure*}
 \subfigure[Length of the phases, as fractions of the entire
@@ -868,17 +868,17 @@ very na\"ive replay engine would yield significant performance gains.
 
 Figure \ref{fig:phasedistribution} shows how the time taken is
 distributed between the phases of the fix generation process.  Two
-main observations can be drawn from the figure.  First, constructing
+main conclusions can be drawn from the figure.  First, constructing
 the state machines is very quick for all of these tests, and is barely
 visible in the graph.  This is reassuring, and suggests that the
 algorithm is able to discard parts of the program's execution which
 are not relevant to the observed crash quickly, so should be able to
 scale up to more complicated bugs in a reasonably straightforward
 way\editorial{Not sure I believe that}.  Second, for the very
-long-running \verb|thunderbird| test the runtime is completely
+long-running \verb|thunderbird| test the running time is completely
 dominated by the phases which involve replaying the log.  This is
-unsurprising, as it has by far the largest logfile, reflecting the
-greater complexity of the buggy program.
+unsurprising, as it has by far the largest logfile, reflecting its
+greater complexity.
 
 Figure \ref{fig:timesignoringreplay} shows how much time is taken by
 the various phases ignoring the time taken to replay the log file.
