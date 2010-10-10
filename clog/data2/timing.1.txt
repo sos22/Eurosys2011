@@ -1,0 +1,39 @@
+    0.000000 start
+    4.289284 read initial snapshot
+  700.785511 have memory trace of crashed thread
+  700.785624 built rip trace
+  700.785666 have proximal cause
+  700.785763 built cmn for {}9:c822b0
+  700.785773 rendered cmn for {}9:c822b0
+  700.786299 built cmn for {}9:c822a4
+  700.786311 rendered cmn for {}9:c822a4
+  700.786390 built cmn for {}9:c8229c
+  700.786706 rendered cmn for {}9:c8229c
+  700.786713 built crash machine
+  700.786747 Done CMN de-duplicate 1
+
+ 2100.252397 built interesting addresses set
+ 3364.736392 collected interesting address logs
+ 3364.736440 removing constant references from {}9:c822b7
+ 3364.736456 removing constant references from {}9:c822ab
+ 3364.736463 removing constant references from {}9:c8229c
+ 3364.736469 removing constant references from {}9:c822a4
+ 3364.736474 Done remove constant references
+
+ 3364.736549 Done CMN de-duplicate 2
+
+ 4745.061419 Done fold registers.
+
+ 4745.061472 Done CMN de-duplicate 3
+
+ 4745.061481 calculating critical sections for {}9:c822b7
+ 4745.061492 calculated critical sections for {}9:c822b7
+ 4745.061500 calculating critical sections for {}9:c822ab
+ 4745.061520 calculated critical sections for {}9:c822ab
+ 4745.061529 calculating critical sections for {}9:c8229c
+ 4745.061565 calculated critical sections for {}9:c8229c
+ 4745.061575 calculating critical sections for {}9:c822a4
+ 4745.061589 calculated critical sections for {}9:c822a4
+ 4745.061683 all done
+ 4745.061688 By class: initial snapshot 4.289111, replay 4740.770151, building CM 0.001116, gen fixes 0.000118
+

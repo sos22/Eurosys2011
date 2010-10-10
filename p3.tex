@@ -1239,9 +1239,8 @@ program; without this, the disparity would be even larger.
 \includegraphics{clog/clog.pdf}
 \caption{Time taken by the analysis phases of the thunderbird bug, in
   seconds, versus the level of backtracking applied to the crashed
-  thread, in dynamic branches.}\editorial{Do I want to include some
-  indication of how replay time changes as well?  Answer is pretty
-  much that it doesn't, but might be worth saying so.}
+  thread, in dynamic branches.  Mean and standard deviation of three
+  runs.}
 \label{fig:eval:backtrack}
 \end{figure}
 
@@ -1251,21 +1250,17 @@ always backtrack to a branch instruction, and for the above tests we
 limited this backtracking to ten branches.  Figure
 \ref{fig:eval:backtrack} shows the effect of changing this parameter
 upon the time taken by the non-replay components of the
-\verb|thunderbird| test.  It can be seen that the time taken increases
-rapidly as the distance which we backtrack increases, by a factor of
-more than 500 when going from a single level of backtracking to fifty
-levels.  Note, however, that the total time taken by the non-replay
-analysis is, even with a backtracking depth of 50, still just 620ms,
-or 0.013\% of the total time taken.  None of our tests depend on more
-than three levels of backtracking to produce a correct fix (and the
-\verb|thunderbird| test requires just one), and so this suggests that
-SLI should be able to backtrack sufficiently to solve most bugs in a
-reasonable amount of time.
-
-\editorial{Maybe plot total time taken, as well.}
-
-\editorial{At the moment, this is all based off a single run at each
-  depth.  Re-do with error bars once the repeats have finished running.}
+\verb|thunderbird| test (the replay parts were unchanged).  It can be
+seen that the time taken increases rapidly as the distance which we
+backtrack increases, by a factor of more than 500 when going from a
+single level of backtracking to fifty levels.  Note, however, that the
+total time taken by the non-replay analysis is, even with a
+backtracking depth of 50, still just 620ms, or 0.013\% of the total
+time taken.  None of our tests depend on more than three levels of
+backtracking to produce a correct fix (and the \verb|thunderbird| test
+requires just one), and so this suggests that SLI should be able to
+backtrack sufficiently to solve most bugs in a reasonable amount of
+time.
 
 \section{Related work}\editorial{This is a bit of a bestiary.  Could do with a bit more analysis.}
 

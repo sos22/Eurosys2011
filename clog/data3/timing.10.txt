@@ -1,0 +1,128 @@
+    0.000001 start
+    7.657462 read initial snapshot
+  704.168675 have memory trace of crashed thread
+  704.169267 built rip trace
+  704.169309 have proximal cause
+  704.169410 built cmn for {}9:c822b0
+  704.169419 rendered cmn for {}9:c822b0
+  704.169961 built cmn for {}9:c822a4
+  704.169973 rendered cmn for {}9:c822a4
+  704.170055 built cmn for {}9:c8229c
+  704.170372 rendered cmn for {}9:c8229c
+  704.170454 built cmn for {c8229c;}9:7f860d344ed1
+  704.170466 rendered cmn for {c8229c;}9:7f860d344ed1
+  704.170522 built cmn for {c8229c;}9:7f860d344eca
+  704.170533 rendered cmn for {c8229c;}9:7f860d344eca
+  704.170605 built cmn for {7f860d344eca;c8229c;}9:7f860d33acd7
+  704.170616 rendered cmn for {7f860d344eca;c8229c;}9:7f860d33acd7
+  704.170746 built cmn for {7f860d344eca;c8229c;}9:7f860d33acd6
+  704.170758 rendered cmn for {7f860d344eca;c8229c;}9:7f860d33acd6
+  704.170853 built cmn for {7f860d344eca;c8229c;}9:7f860d33acd2
+  704.170865 rendered cmn for {7f860d344eca;c8229c;}9:7f860d33acd2
+  704.170972 built cmn for {7f860d344eca;c8229c;}9:7f860d33acce
+  704.170983 rendered cmn for {7f860d344eca;c8229c;}9:7f860d33acce
+  704.171092 built cmn for {7f860d344eca;c8229c;}9:7f860d33acca
+  704.171104 rendered cmn for {7f860d344eca;c8229c;}9:7f860d33acca
+  704.171223 built cmn for {7f860d344eca;c8229c;}9:7f860d33acc6
+  704.171235 rendered cmn for {7f860d344eca;c8229c;}9:7f860d33acc6
+  704.171440 built cmn for {7f860d344eca;c8229c;}9:7f860d33acc2
+  704.171452 rendered cmn for {7f860d344eca;c8229c;}9:7f860d33acc2
+  704.171500 built cmn for {7f860d344eca;c8229c;}9:7f860d33acbf
+  704.171511 rendered cmn for {7f860d344eca;c8229c;}9:7f860d33acbf
+  704.171573 built cmn for {7f860d344eca;c8229c;}9:7f860d33acf9
+  704.171585 rendered cmn for {7f860d344eca;c8229c;}9:7f860d33acf9
+  704.171633 built cmn for {7f860d344eca;c8229c;}9:7f860d33acf6
+  704.171644 rendered cmn for {7f860d344eca;c8229c;}9:7f860d33acf6
+  704.171723 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9f9
+  704.171735 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9f9
+  704.171822 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9f2
+  704.171834 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9f2
+  704.171929 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9ea
+  704.171941 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9ea
+  704.172137 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9e2
+  704.172148 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9e2
+  704.172319 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9da
+  704.172331 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9da
+  704.172455 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9d2
+  704.172467 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9d2
+  704.172516 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9cf
+  704.172527 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9cf
+  704.172602 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9b8
+  704.172613 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9b8
+  704.172821 built cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1653
+  704.172832 rendered cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1653
+  704.172975 built cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a164f
+  704.172987 rendered cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a164f
+  704.173334 built cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a164d
+  704.173347 rendered cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a164d
+  704.173408 built cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a164b
+  704.173419 rendered cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a164b
+  704.175068 built cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1649
+  704.175170 rendered cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1649
+  704.175263 built cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1647
+  704.175291 rendered cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1647
+  704.175390 built cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1644
+  704.175401 rendered cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1644
+  704.175508 built cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a163b
+  704.175520 rendered cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a163b
+  704.175636 built cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1637
+  704.175648 rendered cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1637
+  704.175854 built cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1634
+  704.175866 rendered cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1634
+  704.175999 built cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1630
+  704.176011 rendered cmn for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1630
+  704.176147 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9b6
+  704.176159 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9b6
+  704.176265 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9ad
+  704.176277 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9ad
+  704.176415 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9a9
+  704.176512 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9a9
+  704.176649 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9a7
+  704.176661 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9a7
+  704.176792 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f99f
+  704.176804 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f99f
+  704.176860 built cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f998
+  704.176871 rendered cmn for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f998
+  704.176875 built crash machine
+  704.177309 Done CMN de-duplicate 1
+
+ 2107.993952 built interesting addresses set
+ 3377.085788 collected interesting address logs
+ 3377.085827 removing constant references from {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a164f
+ 3377.085835 removing constant references from {}9:c822b7
+ 3377.085842 removing constant references from {7f860d344eca;c8229c;}9:7f860d33acce
+ 3377.085848 removing constant references from {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9b6
+ 3377.085854 removing constant references from {c8229c;}9:7f860d344ed1
+ 3377.085859 removing constant references from {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9b8
+ 3377.085865 removing constant references from {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1630
+ 3377.085871 removing constant references from {}9:c822ab
+ 3377.085876 removing constant references from {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1634
+ 3377.085882 removing constant references from {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a1653
+ 3377.085888 removing constant references from {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f99f
+ 3377.085894 removing constant references from {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a163b
+ 3377.085900 removing constant references from {}9:c822a4
+ 3377.085905 Done remove constant references
+
+ 3377.086253 Done CMN de-duplicate 2
+
+ 4761.968982 Done fold registers.
+
+ 4761.969100 Done CMN de-duplicate 3
+
+ 4761.969112 calculating critical sections for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a164f
+ 4761.969167 calculated critical sections for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a164f
+ 4761.969176 calculating critical sections for {}9:c822b7
+ 4761.969184 calculated critical sections for {}9:c822b7
+ 4761.969193 calculating critical sections for {7f860d344eca;c8229c;}9:7f860d33acce
+ 4761.969239 calculated critical sections for {7f860d344eca;c8229c;}9:7f860d33acce
+ 4761.969250 calculating critical sections for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9b6
+ 4761.969302 calculated critical sections for {7f860d33acf6;7f860d344eca;c8229c;}9:7f860d33f9b6
+ 4761.969311 calculating critical sections for {}9:c822ab
+ 4761.969333 calculated critical sections for {}9:c822ab
+ 4761.969345 calculating critical sections for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a163b
+ 4761.969375 calculated critical sections for {7f860d33f9b8;7f860d33acf6;7f860d344eca;c8229c;}9:7f86132a163b
+ 4761.969383 calculating critical sections for {}9:c822a4
+ 4761.969406 calculated critical sections for {}9:c822a4
+ 4761.969491 all done
+ 4761.969496 By class: initial snapshot 7.657157, replay 4754.300941, building CM 0.008033, gen fixes 0.000306
+
