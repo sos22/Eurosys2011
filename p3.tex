@@ -188,16 +188,16 @@ Consider false positives, where a state machine predicts a crash when
 none is possible, first.  These will cause the final fix to eliminate
 some schedules which would have been permitted with a perfect
 characterization, but, provided that there is always some schedule
-available (see section \ref{sect:deadlocks}), this cannot cause a
-correct program to become incorrect.  SLI can therefore tolerate some
-level of false positives in the characterization without producing
-incorrect fixes.  Likewise, the effect of a false negative is to only
-partially resolve a bug, so that some possible manifestations remain
-possible.  This is indistinguishable from there simply being several
-bugs, and so, provided that the characterization is sufficiently
-accurate to predict a crash for the captured execution, false
-negatives do not prevent SLI from fulfilling its goal of fixing the
-observed crash.\editorial{Feels glib.}
+available, this cannot cause a correct program to become incorrect.
+SLI can therefore tolerate some level of false positives in the
+characterization without producing incorrect fixes.  Likewise, the
+effect of a false negative is to only partially resolve a bug, so that
+some possible manifestations remain possible.  This is
+indistinguishable from there simply being several bugs, and so,
+provided that the characterization is sufficiently accurate to predict
+a crash for the captured execution, false negatives do not prevent SLI
+from fulfilling its goal of fixing the observed crash.\editorial{Feels
+  glib.}
 
 As such, a perfect characterization is not only difficult, but also
 unhelpful, and we do not attempt to produce one.  This allows us to
@@ -616,7 +616,10 @@ pessimistic, as it prohibits multiple threads from running sections of
 the first type in parallel and prohibits sections of the second and
 third type from running in parallel with each other; a more
 intelligent implementation could retain greater concurrency at the
-expense of slightly greater implementation complexity.
+expense of slightly greater implementation complexity.  There is also
+a risk that introducing these additional locks will introduce a
+deadlock; we protect against that possibility using a simple, fixed,
+timeout.
 
 Crashing regions which cross threads cannot be protected in this way.
 We re-designate those areas of the log as having an unknown crash
@@ -828,32 +831,6 @@ such as flagging functions other than \verb|__assert_fail| as
 indicating bugs or applying other dynamic analyses when deriving the
 proximal cause.  We intend to expand these further in
 future.\editorial{Wording doesn't really work very well.}
-
-\section{Deadlocks}
-\label{sect:deadlocks}
-
-There is a risk that introducing additional synchronisation into the
-program will itself introduce a deadlock.  We mitigate the issue
-slightly by using a timeout on our introduced locks, so that deadlocks
-at least resolve themselves in bounded time, but this can lead to poor
-performance or incomplete fixing of bugs.  This could be avoided in
-some cases by performing additional static analysis to select critical
-sections which are less likely to lead to deadlocks, at the expense of
-potentially not being able to find any safe fix at all.
-
-Another possible approach would be to integrate with a deadlock
-immunity system such as Dimmunix\cite{Jula2008}, detecting and fixing
-deadlocks as they happen.  The system would then hopefully eventually
-converge on a state which is both deadlock and race free.  It should
-also be possible to simulate the effect which SLI lock insertion would
-have on Dimmunix lock order graph, and hence to determine that
-Dimmunix ultimately would insert a healing lock before it needs to do
-so, eliminating the need to reproduce the deadlock before fixing it.
-Of course, the Dimmunix graph is itself only an approximation, and so
-this would not be guaranteed to be effective in every case, but it
-seems likely that it would be sufficient in most situations.
-
-We have not implemented this in our current prototype.
 
 \section{Evaluation}
 \label{sect:evaluation}
@@ -1318,6 +1295,16 @@ DIDUCE\cite{Hangal2002}, which would allow us to obtain such semantic
 information without compromising SLI's current ability to run on
 almost arbitrary unmodified binaries.  We intend to investigate this
 idea more fully in the future.
+
+The current timeout-based mechanism for avoiding deadlocks is also a
+weakness, and can lead to poor performance or incompletely fixed bugs.
+This could be ameliorated to some extent by using further static
+analysis to detect which patches are likely to lead to deadlocks and
+to penalize them in the fix selection phase.  Alternatively, SLI could
+be integrated with a deadlock immunity system such as
+Dimmunix\cite{Jula2008}, which would detect and fix deadlocks when
+they happen.  The system would then hopefully converge on a stack
+which is both deadlock and race free.
 
 \section{Conclusions}
 
