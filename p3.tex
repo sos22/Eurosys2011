@@ -332,7 +332,7 @@ instructions.
 
 \subsubsection{Memory accesses}
 
-Load instructions also require special handling in this scheme, as the
+Load instructions require special handling in this scheme, as the
 state machine for a given instruction may need to reference a load
 issued by an instruction which occurs after it, and the value of the
 relevant memory location might have changed by the time it executes.
@@ -340,11 +340,9 @@ We solve this problem by labelling each load expression with the
 instruction pointer and call stack at the point at which it is issued,
 which allows state machines to refer to loads which have not yet
 happened, and hence to capture the effects of future loads on the
-thread's behavior.
-
-For example, the previously-derived state machine for instruction
-\verb|H| of figure \ref{fig:broken_privatize} produces a state machine
-at \verb|G| of
+thread's behavior.  This means that the state machine for instruction
+\verb|H| of the example can be backtracked to the start of instruction
+\verb|G| to produce a state machine
 
 \begin{verbatim}
 if BadAddr (load(rcx@G) + 48)
@@ -352,7 +350,7 @@ if BadAddr (load(rcx@G) + 48)
  else no-crash
 \end{verbatim}
 
-and one at \verb|F| of
+This can in turn be backtracked to the start of \verb|F|, producing
 
 \begin{verbatim}
 if BadAddr (load(load(rsp@F)@G) + 48)
@@ -371,12 +369,12 @@ simple matter of adding another entry to this list.\editorial{I used
   because it used to be a major optimization, but I guess some of the
   improvements to the alias resolution stuff must have obviated it.}
 
-Many load instructions will access a thread's local stack.  While it
-is, in principle, possible for one of these accesses to be involved in
-a concurrency bug, it is in practise highly unlikely, as it is unusual
+Many load instructions access a thread's local stack, and while it is
+in principle possible for one of these accesses to be involved in a
+concurrency bug, it is in practise highly unlikely, as it is unusual
 for one thread to access another's stack.  It is therefore useful to
 be able to match these loads to the stores which originally produced
-the loaded value, and hence to eliminate them.  We use a simple stack
+the loaded value and hence eliminate them.  We use a simple stack
 resolution heuristic to do so.  When we encounter a store instruction,
 we check if the instruction occurred in the captured execution, and if
 it did, and it stored to the stack in that case, we traverse the log
@@ -389,26 +387,25 @@ eliminating them and thus simplifying the machine.\editorial{Would
 \subsubsection{Branch instructions}
 \label{sect:branch_instrs}
 Branch instructions also require care, as they may involve parts of
-the program which were not used in the captured execution.  We
-determine the branch's effects using a simple static analysis.  The
-first stage of this analysis is to build an approximation of the
-program's control flow graph starting from the branch instruction and
-stopping when we encounter an instruction for which we already have a
-state machine.  The state machines can then be propagated backwards
-through the graph using the same algorithm as we use to backtrack
-across dynamically-executed instructions, and a state machine can
-hence be derived for the root of the graph and the original branch
-instruction.
+the program which were not used in the captured execution, for which
+no state machines will be available.  We determine the effects of
+unexecuted code using a simple static analysis.  The first stage of
+this analysis is to build an approximation of the program's control
+flow graph starting from the branch instruction and stopping when we
+encounter an instruction for which we already have a state machine.
+The state machines can then be propagated backwards through the graph
+using the same algorithm as we use to backtrack across
+dynamically-executed instructions, and a state machine can hence be
+derived for the root of the graph and the original branch instruction.
 
 Indirect branches, and any other branches which compute their target
 dynamically, pose an additional challenge here, as it is often
 difficult to statically predict the target of the branch.  The most
 common case is return instructions, and we handle these by inlining
-every function into its called location, eliminating most return
-instructions completely.  The remainder correspond to functions which
-had started but not completed at the time of the crash, and we assume
-that if any of those return then it indicates that the bug has been
-avoided.
+called functions, eliminating most return instructions completely.
+The remainder correspond to functions which had started but not
+completed at the time of the crash, and we assume that if any of those
+return then the bug has been avoided.
 
 Other indirect branch instructions are more challenging.  We solve
 this problem by using the captured trace as a simple oracle: if the
@@ -419,23 +416,23 @@ or if the exploration simply reaches its depth limit, we place a
 special analysis-failed node in the graph.  Once the CFG is complete,
 we eliminate all branches to these failed nodes; if that causes some
 node to have no known successors then that node is also marked as
-analysis-failed, and the process iterates.  Note that the branches
-taken in the captured execution will always be preserved at this
-stage, as the oracle will always be able to provide at least some
-prediction of their target, and, as they are on the captured trace,
-they cannot be beyond the depth limit\editorial{Not sure that's very
-  clear}.  As such, this step can be seen as pruning the set of paths
-considered to be only those which are sufficiently similar to the
-captured execution.
+analysis-failed, and the process iterates until all failed nodes are
+removed.  Branches taken in the captured execution will always be
+preserved at this stage, as the oracle will always be able to provide
+at least some prediction of their target, and, as they are on the
+captured trace, they cannot be beyond the depth limit\editorial{Not
+  sure that's very clear}.  As such, this step can be seen as pruning
+the set of paths considered to be only those which are sufficiently
+similar to the captured execution.
 
-Loops also complicate this simple algorithm.  We avoid this problem by
-simply breaking them, removing some subset of the graph's edges so as
-to eliminate the loop.  We choose edges to remove based on two
-heuristics.  First, we try not to remove any edges which are
-represented in the captured execution.  Second, we try not to
-partition the graph, so that as many instructions as possible, and
-hence as much of the program's behavior as possible, are represented
-in the final state machine.  
+Loops also complicate this simple algorithm.  We avoid the problem by
+breaking them, removing a subset of the graph's edges so as to
+eliminate the loop.  We choose edges to remove based on two
+heuristics.  First, we try not to remove any edges which are present
+in the captured execution.  Second, we try not to partition the graph,
+so as many instructions as possible, and hence as much of the
+program's behavior as possible, are represented in the final state
+machine.
 
 Breaking loops has the useful side-effect of disambiguating the labels
 used to refer to load instructions: in a loop-free control flow graph,
@@ -444,32 +441,31 @@ can be referred to unambiguously by their static location in the CFG.
 In the case of the x86 architecture, all common instructions which
 perform multiple loads can be converted into loops, which can then be
 broken in the usual way, and so this is sufficient to ensure that any
-static instruction issues at most one dynamic load.
+static instruction issues at most one dynamic load and hence that load
+labels refer to at most one load.
 
 The result is a DAG of instructions, rooted at the branch instruction
 and with state machines at all of its leaves, which approximates the
 part of the static CFG of the program which is most relevant to the
 captured execution.  This approximation is often imperfect, but, as
-discussed in section above, such imperfections will not always prevent
-SLI from generating at least a partial fix for the bug, and hence can
-usually be tolerated in exchange for the dramatically simpler analysis
-which they allow.
+discussed above, such imperfections will not always prevent SLI from
+generating at least a partial fix for the bug, and hence can usually
+be tolerated in exchange for the dramatically simpler analysis which
+they allow.
 
 In the example, the next instruction which must be assigned a state
 machine is \verb|D: je F|, as that preceded instruction \verb|F| in
 the captured trace.  It is followed by instruction \verb|F|, which
-already has a state machine, and \verb|E|, which does not.  \verb|E|
-is itself followed by \verb|F|.  The CFG therefore contains just three
-nodes, representing \verb|D|, \verb|E|, and \verb|F|, with edges from
-\verb|D| to \verb|E| and \verb|F| and one from \verb|E| to \verb|F|.
-The only node which initially does not have a state machine but which
-has state machines for all of its successors is \verb|E|, and so we
-will start by attempting to derive a state machine for it.  In this
-case, the instruction is a simple store to a stack location.  Assuming
-that this store was ever executed in the captured execution, the stack
-resolution heuristic will predict that the load at \verb|F| will load
-the stored value, and so the state machine assigned to \verb|E| will
-be
+already has a state machine, and \verb|E|, which does not, and
+\verb|E| is followed by \verb|F|.  The CFG therefore contains just
+three nodes, representing \verb|D|, \verb|E|, and \verb|F|, with edges
+from \verb|D| to \verb|E| and \verb|F| and one from \verb|E| to
+\verb|F|.  We then proceed to derive a state machine for \verb|E|,
+which is a simple store to a stack location.  Assuming that this store
+was ever executed in the captured execution, the stack resolution
+heuristic will predict that the load at \verb|F| will load the stored
+value.  The load will therefore be eliminated, and so the state
+machine for instruction \verb|E| will be
 
 \begin{verbatim}
 if BadAddr (load(fallback@G)+48)
@@ -477,8 +473,8 @@ if BadAddr (load(fallback@G)+48)
  else no-crash
 \end{verbatim}
 
-Instruction \verb|D| now has all of its successors, and so we can now
-derive a state machine for it.  This is illustrated in figure
+It is now possible to combine the machines for \verb|E| and \verb|F|
+to produce one for \verb|D|.  This is illustrated in figure
 \ref{fig:state_machines_instr_d}.  Backtracking further to instruction
 \verb|A| will then produce the state machine illustrated in figure
 \ref{fig:state_machines_instr_a}.
@@ -496,12 +492,16 @@ program had not taken the branch immediately before crashing (which
 might happen if the \verb|fallback| structure was itself invalid); the
 only difference is that \verb|E|'s state machine will be derived from
 the captured execution rather than a hypothetical execution generated
-by static analysis.  This example also illustrates that, because stack
-resolution is interleaved with control flow discovery, it is not
-equivalent to assuming a completely static data flow graph, but can
-correctly describe simple control-flow dependencies.  Separating the
-two processes into independent phases would lose this property, and
-result in far less accurate characterizations.
+by static analysis.  This is useful: by eliminating uninteresting
+aspects of the observed behavior, SLI is able to generalize from one
+crash to closely related ones, and hence fix them at the same time,
+without eliminating an excessive number of safe schedules.  This
+example also illustrates that the stack resolution heuristic is not
+equivalent to assuming a completely static data flow graph, as it is
+interleaved with control flow discovery and hence respects simple
+control-flow dependencies.  Separating the two processes into
+independent phases would lose this property, and result in far less
+accurate characterizations.\editorial{ref phase order problem?}
 
 \section{Investigating the multi-threaded behavior of the program}
 \label{sect:multi_threading}
@@ -513,14 +513,14 @@ program's execution and discover points at which the state machine
 would have returned \verb|no-crash| if it had executed atomically.
 From these, it is possible to infer which parts of the program's
 execution should be synchronized against each other, and hence to
-suggest some potentially useful synchronizations.  In principle, this
-stage can run immediately as soon as the first state machine has been
-derived, but it is possible to derive a significant performance
-advantage by grouping machines into small batches and hence reducing
-the number of times which the log file has to be replayed.  As we show
-in section \ref{sect:evaluation}, replaying the log file contributes a
-large proportion of the entire cost of generating a fix, and so this
-is a very worthwhile optimization.
+suggest potentially useful synchronizations.  In principle, this stage
+can run as soon as the first state machine has been derived, but it is
+possible to derive a significant performance advantage by grouping
+machines into small batches and hence reducing the number of times
+which the log file has to be replayed.  As we show in section
+\ref{sect:evaluation}, replaying the log file contributes a large
+proportion of the entire cost of generating a fix, and so this is a
+very worthwhile optimization.
 
 Our implementation of this strategy has several stages.  First, we
 determine which memory locations are relevant to the state machines in
@@ -558,35 +558,26 @@ memory.
 
 These specialized state machines are then evaluated at each store to a
 relevant address, partitioning the log into regions which crash (if
-the machine evaluates to \verb|crash| or depends on an inaccessible
-memory location) or do not crash (if it evaluates to \verb|no-crash|).
-These regions indicate where the specialized machines (and hence,
-hopefully, the dynamic instructions from which they were derived)
-would have been safe if they had been executed atomically.  Any
-machines which always predict the same result, whether \verb|crash| or
-\verb|no-crash|, are discarded at this stage.
-
-The specialized partitionings are then combined to produce a
-partitioning for the original unspecialized state machine: wherever
-all of the specialized partitionings make the same prediction, the
-unspecialized partition will have the same prediction, and wherever
-they differ the unspecialized partition will make no prediction at
-all.  If the resulting schedule makes no \verb|crash| predictions or
-no \verb|no-crash| ones then the original unspecialized state machine
-is discarded.  In this way SLI is able to ignore thread-local
-computation without the risk of also ignoring some
-scheduling-dependent work\editorial{Rephrase}.  See section
+the machine evaluates to \verb|crash| or loads an inaccessible memory
+location) or do not crash (if it evaluates to \verb|no-crash|).  The
+specialized partitionings are then combined to produce a partitioning
+for the original unspecialized state machine: wherever all of the
+specialized partitionings make the same prediction, the unspecialized
+partition will have the same prediction, and wherever they differ the
+unspecialized partition will make no prediction at all.  See section
 \ref{sect:final_example} for a situation in which specialization
 allows us to derive an additional potential fix, and the discussion of
 the \verb|twovar| test case in section \ref{sect:bug_descr} for one in
 which the specialized predictions would have produced an incorrect fix
-if they had been used without the recombination step.\editorial{Not
-  sure how comprehensible that is.}
+if they had been used without the recombination step.\editorial{Need
+  more explanation of why we're doing this.}
 
 \subsection{Generating candidate fixes}
 \label{sect:gen_fix}
+%% This section references the next one without using LaTeX xrefs; do
+%% not move it.
 
-At the end of this stage, we have, for each (unspecialized) state machine:
+At the end of this stage, we have, for each state machine:
 
 \begin{itemize}
 \item A list of all loads which the state machine depends on.
@@ -614,11 +605,11 @@ set of critical sections:
   unsafe regions.
 \end{itemize}
 
-It is then sufficient to ensure that the first type of critical
-section does not overlap with any of the second or third types.  In
-our current implementation, this is done by introducing a new global
-lock which is acquired before the first instruction of any of these
-critical sections and then released after the last one (see section
+The task is then to ensure that the first type of critical section
+cannot overlap with any of the second or third types.  In our current
+implementation, this is done by introducing a new global lock which is
+acquired before the first instruction of any of these critical
+sections and then released after the last one (see section
 \ref{sect:binpatch} for more details).  This is moderately
 pessimistic, as it prohibits multiple threads from running sections of
 the first type in parallel and prohibits sections of the second and
@@ -629,25 +620,32 @@ expense of slightly greater implementation complexity.
 Crashing regions which cross threads cannot be protected in this way.
 We re-designate those areas of the log as having an unknown crash
 prediction, which causes SLI to give up trying to protect them and to
-penalize the resulting fix when selecting which fix to actually apply
-(see section \ref{sect:selectfix}).
+penalize the resulting fix when selecting which fix to actually apply;
+see the next section for details.
+
+%% Note the non-LaTeX reference from the previous section to the next
+%% one!
 
 \subsection{Selecting a fix}
 \label{sect:selectfix}
 
 This process might produce multiple possible fixes if multiple state
 machines are available, and it is then necessary to select an
-appropriate one to instantiate into a binary patch.  We use a very
-simple cost heuristic to do so: the cost of a fix is given by $U.n_u +
-C_s.n_s + {\sum_{i}}s_i$ where $n_u$ is the number of points in the
-log where we are unable to produce a crash prediction, $n_s$ is the
-total number of critical sections, $s_i$ is the number of accesses in
-the $i$th critical section, and $C_s$ and $U$ are constants reflecting
-the cost of introducing a new empty critical section and of only
-partially fixing the bug.  SLI then selects the candidate fix with the
-lowest cost.  Our prototype sets $U=1000$ and $C_s=10$, strongly
-preferring fixes for which all unsafe states can be eliminated and
-weakly preferring fixes with a smaller number of critical sections.
+appropriate one to instantiate into a binary patch.  Some can be
+discarded by very simple heuristics (for instance, fixes in which
+every critical section is a single access can be immediately
+eliminated), but there will in general be multiple possible fixes to
+choose from.  We use a very simple cost heuristic to do so: the cost
+of a fix is given by $U.n_u + C_s.n_s + {\sum_{i}}s_i$ where $n_u$ is
+the number of points in the log where we are unable to produce a crash
+prediction, $n_s$ is the total number of critical sections, $s_i$ is
+the number of accesses in the $i$th critical section, and $C_s$ and
+$U$ are constants reflecting the cost of introducing a new empty
+critical section and of only partially fixing the bug.  SLI then
+selects the candidate fix with the lowest cost.  Our prototype sets
+$U=1000$ and $C_s=10$, strongly preferring fixes for which all unsafe
+states can be eliminated and weakly preferring fixes with a smaller
+number of critical sections.
 
 In our evaluation, there are generally only a small number of possible
 fixes, all of which are correct and none of which would obviously lead
@@ -821,7 +819,7 @@ straightforwardly applied to running programs, and so once a fix has
 been discovered it could be applied to running applications without
 any downtime or loss of data.\editorial{Application communities?}
 
-\subsection{Semantic knowledge}
+\section{Semantic knowledge}
 \label{sect:semanticknowledge}
 SLI needs only very limited semantic knowledge of the intended
 behavior of the program.  In the default configuration, the only
