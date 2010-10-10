@@ -9,10 +9,10 @@ p3.pdf: p3.tex timing/r4.pdf timing/timings.pdf timing/without_replay.pdf diagra
 %.eps: %.dia
 	dia -l -e $@ $<
 
-timing/timing.eps timing/without_replay.eps: timing/timings.gpl
+timing/timings.eps timing/without_replay.eps: timing/timings.gpl timing/timings.dat
 	cd timing && gnuplot ./timings.gpl
 
-timing/timings.gpl: timing/mk_timing_table.sh
+timing/timings.dat: timing/mk_timing_table.sh
 	cd timing && ./mk_timing_table.sh
 
 timing/r4.eps: timing/r4.gpl
