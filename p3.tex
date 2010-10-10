@@ -295,7 +295,7 @@ which is intended to be a buggy instance
 of the common structure privatization pattern\needCite{} in an
 x86-like assembly language.  Thread 2 initializes (\verb|V|) and
 publishes (\verb|W|) a structure, does some unrelated work, and then
-attempts to privatize (\verb|X|) and de-initialise (\verb|Y|) the
+attempts to privatize (\verb|X|) and de-initialize (\verb|Y|) the
 structure.  Meanwhile, thread 1 loads the pointer published by thread
 2 (\verb|A|), checks whether it is valid (\verb|B|, \verb|C| and
 \verb|D|), and, if it is not, loads a fallback version (\verb|E|),
@@ -763,7 +763,7 @@ second section will wrap around the loop, which somewhat complicates
 the implementation of the binary patcher; see \S\ref{sect:binpatch}
 for our approach to this problem).  This fix will also be suggested by
 SLI, and would also fix the bug.  Furthermore, because it has fewer
-critical sections, it will be preferred by the prioritisation
+critical sections, it will be preferred by the prioritization
 heuristic.
 
 It could be argued, however, that this smaller fix is inferior to the
@@ -1076,7 +1076,7 @@ completely ignoring the accesses related to publishing and
 un-publishing the structure.  While somewhat surprising, this is also
 a correct fix, completely preventing the observed bug, and, as it
 produces slightly smaller critical sections, would be preferred by the
-fix prioritisation heuristic.
+fix prioritization heuristic.
 
 \verb|privatize| is the converse of \verb|publish|: a thread is
 attempting to make a structure private, and does it incorrectly.  It
@@ -1259,7 +1259,7 @@ strategy is probably failure obliviousness\cite{Rinard2004}, which
 waits until the protected program makes an invalid memory reference
 and then attempts to fix it from the resulting exception handler.
 DieHard\cite{Berger2006} is conceptually similar, but works
-pre-emptively rather than from a fault handler, by guessing where
+preemptively rather than from a fault handler, by guessing where
 memory errors are likely to occur and modifying the program's memory
 map to make those errors as harmless as possible.  In this way
 programs are able to continue executing in spite of the presence of
@@ -1334,7 +1334,7 @@ which is both deadlock and race free.
 \section{Conclusions}
 
 We have presented SLI, a system for automatically fixing specific
-synchronisation bugs in shared-memory programs using only their
+synchronization bugs in shared-memory programs using only their
 binaries, with minimal user intervention.  We have demonstrated that
 it can be used to fix real-world bugs in at least some cases, and
 discussed the compromises and trade-offs which are necessary in order
