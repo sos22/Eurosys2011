@@ -920,17 +920,16 @@ it would be reasonable to expect that most bugs would have analysis
 time more similar to the \verb|thunderbird| bug than to the artificial
 ones.
 
-We also investigate how the analysis depends on the exact details of
+We also investigated how the analysis depends on the exact details of
 the way in which a particular bug is reproduced, by running our tool
 on five independent reproductions of the \verb|glibc| bug.  Every
 reproduction produced the same set of state machines and suggested
 fixes.  The time taken by the analysis process varied significantly,
 however (from eight to thirteen seconds), mostly because the time
 taken to reproduce the bug varied and so the size of the log which had
-to be parsed also varied.  A similar pattern was observed of the other
-bugs; we omit the full results due to space constraints\editorial{Not
-  sure this is all that interesting, or that I've phrased it very
-  well...}.
+to be parsed also varied.  Similar results were obtained for the other
+bugs.\editorial{Not sure this is all that interesting, or that I've
+  phrased it very well...}.
 
 \subsection{Description of test bugs}
 \label{sect:bug_descr}
@@ -1264,6 +1263,8 @@ propagating throughout the program and potentially leading to a crash.
 This is arguably safe, although not according to the definition used
 in this paper, and can cover a wide variety of bugs with little
 overhead.
+
+\editorial{Something about static analysis and model checking?}
 
 \section{Future work}
 
