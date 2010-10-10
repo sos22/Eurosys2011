@@ -89,22 +89,21 @@ which means that they are less likely to be discovered by testing and
 harder to fix once they have been discovered.  A number of techniques
 have been proposed for reducing the likelihood of such errors,
 including transactional memory\cite{Shavit1997} and automatic
-parallelization\cite{Bacon1994}, but, while potentially greatly
-reducing the incidence of synchronization mistakes in new software,
-they cannot be directly applied to the large body of existing
-concurrent software.  There is therefore a need for techniques which
-can assist in fixing bugs in programs written using the currently
-widely-used shared memory model of concurrency.  In this paper, we
-introduce SLI, or Speculative Lock Insertion, as one potential
-approach to this problem.  SLI automatically fixes observed
-synchronization bugs, given only the program binary and a reproduction
-of the bug, generating a modified binary whose behavior is identical
-to that of the original except that it no longer suffers from the bug.
-Furthermore, the fixes will usually have very low performance
-overhead, and the process of generating the fix itself takes only a
-moderate amount of time (ranging from seconds in simple cases to a few
-hours in more complicated ones).  SLI does not depend on programmer
-annotations or semantic knowledge of the program's intended behavior.
+parallelization\cite{Bacon1994}, but these cannot be transparently
+applied to the large body of existing concurrent software.  There is
+therefore a need for techniques which can assist in fixing bugs in
+programs written using the currently widely-used shared memory model
+of concurrency.  In this paper, we introduce SLI, or Speculative Lock
+Insertion, as one potential approach to this problem.  SLI
+automatically fixes observed synchronization bugs, given only the
+program binary and a reproduction of the bug, generating a modified
+binary whose behavior is identical to that of the original except that
+it no longer suffers from the bug.  Furthermore, the fixes will
+usually have very low performance overhead, and the process of
+generating the fix itself takes only a moderate amount of time
+(ranging from seconds in simple cases to a few hours in more
+complicated ones).  SLI does not depend on programmer annotations or
+semantic knowledge of the program's intended behavior.
 
 Our approach consists of several key phases.  First, the bug must be
 captured under a deterministic replay system such as
@@ -150,7 +149,7 @@ requirement we place on the choice of DRS is that it must allow us to
 replay the relevant fragment of execution as many times as necessary
 and produce the same sequence of memory accesses each time.  This
 captured execution does not need to be precisely the same as the
-original crashing execution (although excessive errors here could lead
+original crashing execution (although excessive imprecision here could lead
 to SLI fixing the wrong bug).  The most obvious way of capturing an
 execution, used in our prototype, is to simply record every single
 memory access issued by the program, which is effective but has
@@ -166,6 +165,7 @@ slightly different context, an automatic program exerciser such as
 CHESS\cite{Musuvathi2008} could be used to detect unknown bugs, which
 could then be passed to SLI to be automatically characterized and
 fixed.\editorial{I want to use the phrase closed-loop here}
+
 
 \section{Deriving a single-threaded explanation of the bug}
 \label{sect:build_state_machines}
@@ -186,9 +186,9 @@ doing so would not necessarily be helpful.
 Consider false positives, where a state machine predicts a crash when
 none is possible, first.  These will cause the final fix to eliminate
 some schedules which would have been permitted with a perfect
-characterization, but, provided that there is always some schedule
-available, this cannot cause a correct program to become incorrect.
-SLI can therefore tolerate some level of false positives in the
+characterization, but---provided that there is always some schedule
+available---this cannot cause a correct program to become incorrect.
+SLI can therefore tolerate some false positives in the
 characterization without producing incorrect fixes.  Likewise, the
 effect of a false negative is to only partially resolve a bug, so that
 some possible manifestations remain possible.  This is
@@ -198,9 +198,8 @@ a crash for the captured execution, false negatives do not prevent SLI
 from fulfilling its goal of fixing the observed crash.\editorial{Feels
   glib.}
 
-As such, a perfect characterization is not only difficult, but also
-unhelpful, and we do not attempt to produce one.  This allows us to
-use much simpler analyses and to produce much simpler
+Hence we do not attempt to produce a perfect characterization.  This
+allows us to use much simpler analyses and to produce much simpler
 characterizations, which makes it more likely that the system will be
 able to generate a correct fix.  When we do make approximations in the
 characterization, we attempt to ensure that the captured execution
@@ -213,6 +212,7 @@ all, much less if they are relevant to the observed behavior.  It
 therefore makes sense that, when an approximation must be made in
 order to reduce execution time, or simply to make an analysis
 feasible, it should be made on these speculative paths.
+
 
 %% Similarly, we also attempt to make the machine more accurate at
 %% points which are nearer to the crash, and approximate more
@@ -227,7 +227,7 @@ feasible, it should be made on these speculative paths.
 
 \subsection{The proximal cause}
 \label{sect:prox_cause}
-The first phase of our algorithm is to locate the first point in the
+The initial step of our algorithm is to locate the first point in the
 log at which something has definitely gone wrong, and hence to obtain
 a proximal cause of the crash and to nominate one thread as being
 directly responsible for it.  A naive approach would simply use the
@@ -236,15 +236,17 @@ correct, and for some simple bugs, such as \verb|NULL|-dereferences or
 assertion failures, it works well.  However, for more complicated
 classes of bugs, such as use-after-frees, there can be a significant
 lag between the first definitely bad behavior (such as the use of
-released memory) and the program crash, and this can complicated later
+released memory) and the program crash, and this can complicate later
 phases.  This can be mitigated by applying a dynamic analysis tool,
 such as Valgrind\cite{Nethercote2007}, to the captured execution,
 which provides a more accurate starting point for the rest of the
-analysis.  We have implemented a a straightforward analysis to detect
+analysis.  We have implemented a straightforward analysis to detect
 use-after-free bugs at the first reference to released memory as part
 of our prototype; combining this with other forms of analysis or with
 application-specific knowledge would be straightforward, and would
 allow other classes of bugs to be detected.
+
+
 
 \begin{figure*}
  \begin{subfloat}
@@ -274,6 +276,9 @@ X: mov $0 -> (global1)
 Y: mov $0 -> (variable1)
 ...
 Z: jmp V
+
+
+
 \end{verbatim}
   \end{minipage}
   \caption{Thread 2}
@@ -285,8 +290,8 @@ Z: jmp V
 The result of this initial analysis is generally a single-node state
 machine which captures the reason for the crash using only information
 which is available at the instruction on which the crash occurred.
-For example, consider the program shown in figure
-\ref{fig:broken_privatize}, which is intended to be a buggy instance
+For example, consider the program shown in figure~\ref{fig:broken_privatize},
+which is intended to be a buggy instance
 of the common structure privatization pattern\needCite{} in an
 x86-like assembly language.  Thread 2 initializes (\verb|V|) and
 publishes (\verb|W|) a structure, does some unrelated work, and then
@@ -312,9 +317,9 @@ hence to determine an equivalent expression which can be evaluated
 earlier in the execution.  This is straightforward for simple
 arithmetic instructions.  The log captured in the initial
 bug-recording phase allows us to determine, for any instruction, which
-instruction preceded it, and hence to apply the instruction to the
-state machine.  This transforms the machine to one which is valid
-before the instruction was executed.
+instruction preceded it, and hence to roll this into the 
+state machine.  This transforms the machine to one
+which is valid before the instruction was executed.
 
 In the above, the preceding instruction is \verb|add $48, %rdx|.  This
 transforms \verb|rdx| into \verb|rdx+48|.  Applying this
@@ -399,6 +404,15 @@ using the same algorithm as we use to backtrack across
 dynamically-executed instructions, and a state machine can hence be
 derived for the root of the graph and the original branch instruction.
 
+\begin{figure*}[t]
+\subfigure[Instruction D]{\includegraphics[scale=0.35]{diagrams/statementD.pdf}
+  \label{fig:state_machines_instr_d}}
+\subfigure[Instruction A]{\includegraphics[scale=0.35]{diagrams/statementA.pdf}
+  \label{fig:state_machines_instr_a}}
+\caption{State machines produced for the example program}
+\end{figure*}
+
+
 Indirect branches, and any other branches which compute their target
 dynamically, pose an additional challenge here, as it is often
 difficult to statically predict the target of the branch.  The most
@@ -435,6 +449,7 @@ so as many instructions as possible, and hence as much of the
 program's behavior as possible, are represented in the final state
 machine.
 
+
 Breaking loops has the useful side-effect of disambiguating the labels
 used to refer to load instructions: in a loop-free control flow graph,
 each instruction is executed at most once, and so dynamic instructions
@@ -453,6 +468,8 @@ discussed above, such imperfections will not always prevent SLI from
 generating at least a partial fix for the bug, and hence can usually
 be tolerated in exchange for the dramatically simpler analysis which
 they allow.
+
+
 
 In the example, the next instruction which must be assigned a state
 machine is \verb|D: je F|, as that preceded instruction \verb|F| in
@@ -480,14 +497,6 @@ to produce one for \verb|D|.  This is illustrated in figure
 \ref{fig:state_machines_instr_d}.  Backtracking further to instruction
 \verb|A| will then produce the state machine illustrated in figure
 \ref{fig:state_machines_instr_a}.
-
-\begin{figure*}
-\subfigure[Instruction D]{\includegraphics[scale=0.35,trim=0 60mm 0 40mm]{diagrams/statementD.pdf}
-  \label{fig:state_machines_instr_d}}
-\subfigure[Instruction A]{\includegraphics[scale=0.35,trim=0 60mm 0 40mm]{diagrams/statementA.pdf}
-  \label{fig:state_machines_instr_a}}
-\caption{State machines produced for the example program}
-\end{figure*}
 
 Note that identical state machines would have been derived if the
 program had not taken the branch immediately before crashing (which
@@ -559,7 +568,7 @@ state machines which individually depend only on the content of shared
 memory.  State machines which reduce to a constant are discarded at
 this stage.
 
-These specialized state machines are then evaluated at each store to a
+The specialized state machines are then evaluated at each store to a
 relevant address, partitioning the log into regions which crash (if
 the machine evaluates to \verb|crash| or loads an inaccessible memory
 location) or do not crash (if it evaluates to \verb|no-crash|).  The
@@ -659,10 +668,10 @@ $U=1000$ and $C_s=10$, strongly preferring fixes for which all unsafe
 states can be eliminated and weakly preferring fixes with a smaller
 number of critical sections.
 
-In our evaluation, there are generally only a small number of possible
-fixes, all of which are correct and none of which would obviously lead
-to pathological performance, and so the exact choice of prioritisation
-heuristic does not appear to be critical.
+This simple heuristic has worked well in our experience to date
+(\S\ref{sect:evaluation}), as there are generally only a small number
+of possible fixes, all of which are correct and none of which would
+obviously lead to pathological performance.
 
 \subsection{Example}
 \label{sect:final_example}
@@ -779,8 +788,10 @@ eliminates its symptoms, and the techniques used by SLI are much more
 applicable to the latter.  This will be true of any approach which
 does not rely on programmer annotations (ignoring trivial systems
 which just pattern-match the buggy code against a library of common
-bugs and their standard fixes); the extra flexibility gained by being
-applicable to arbitrary binaries makes this a reasonable trade-off.
+bugs and their standard fixes).
+
+%; the extra flexibility gained by being applicable to arbitrary
+%binaries makes this a reasonable trade-off.
 
 \subsection{Creating a binary patch}
 \label{sect:binpatch}
@@ -827,8 +838,8 @@ transferring control to the patch from the breakpoint handler.
 Name of test & Nature & Number & Time taken & Size of & Number of & Total number of state\\
  & & of fixes & (seconds) & logfile & state machines & machine states\\
 \hline
-toctou & Synthetic simple & 1 & $1.18 \pm 0.02$ & 28MiB & 8 & 20\\
-       & TOCTOU & & & \\
+toctou & Synthetic TOCTOU & 1 & $1.18 \pm 0.02$ & 28MiB & 8 & 20\\
+%       & TOCTOU & & & \\
 twovar & Synthetic two-variable & 2 & $1.89 \pm 0.03$ & 31MiB & 8 & 22\\
        & atomicity violation &&&\\
 publish & Synthetic broken & 2 & $1.15 \pm 0.02$ & 31MiB & 5 & 16 \\
@@ -842,8 +853,8 @@ glibc & Kernel of a genuine & 6 & $8.15 \pm 0.03$ & 48MiB & 10 & 52\\
 thunderbird & Genuine TOCTOU & 1 & $4740 \pm 6$ & 758MiB & 6 & 14
 \end{tabular}
 \caption{Summary of results obtained from running the fix generating
-  tool on a single log file collected from each bug.  Timing
-  information is mean and standard deviation from five runs.}
+  tool on a single log file collected from each bug.  The ``Time taken''
+  column gives the mean and standard deviation from five runs.}
 \label{tab:perf_summary}
 \end{table*}
 
@@ -905,14 +916,14 @@ infrequently, and so it would be reasonable to expect that most bugs
 would have analysis time more similar to the \verb|thunderbird| bug
 than to the artificial ones.
 
-We also investigated how the analysis depends on the exact details of
-the way in which a particular bug is reproduced, by running our tool
+We also investigated how the analysis depends on the exact way in 
+which a particular bug is reproduced, by running our tool
 on five independent reproductions of the \verb|glibc| bug.  Every
 reproduction produced the same set of state machines and suggested
 fixes.  The time taken by the analysis process varied significantly,
 however (from eight to thirteen seconds), mostly because the time
-taken to reproduce the bug varied and so the size of the log which had
-to be parsed also varied.  Similar results were obtained for the other
+taken to reproduce the bug varied and hence produced differently sized
+logs to be parsed. Similar results were obtained for the other
 bugs.\editorial{Not sure this is all that interesting, or that I've
   phrased it very well...}
 
@@ -963,10 +974,11 @@ thread and the other protecting the two loads in the second thread.
 This is a correct and minimal fix.
 
 \verb|twovar| is a two-variable atomicity violation.  In this test,
-there are two global variables, and one thread loops setting both to
-five and then setting both to seven while another thread loops loading
-both and asserting them to be equal.  The core of the second thread
-consists of two instructions:
+there are two global variables, and one thread loops setting both to 5
+and then setting both to 7 while another thread loops loading both and
+asserting them to be equal.  SLI again produces a single correct fix
+in this case.  The core of the second thread consists of two
+instructions:
 
 \begin{verbatim}
 l1: mov (global1) -> %rax
@@ -974,7 +986,7 @@ l2: cmp %rax, (global2)
     jne __assert_fail
 \end{verbatim}
 
-The state machine for \verb|l1| is
+The single-threaded state machine for \verb|l1| is
 
 \begin{verbatim}
 if load(global1@l1) != load(global2@l2)
