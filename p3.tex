@@ -846,16 +846,14 @@ thunderbird & Genuine TOCTOU & 1 & $4740 \pm 6$ & 758MiB & 6 & 14
 
 As shown in table \ref{tab:perf_summary}, our prototype implementation
 is able to fix a reasonable selection of artificial bugs within a few
-seconds, given only the program binary and a log of the bug
+seconds, given only the program binary and a log which shows the bug
 reproducing, and is able to fix at least one real-world bug within an
-hour and a half.  This data also shows that the prototype avoids state
+hour and a half.  The data also shows that the prototype avoids state
 machine explosion, generating only a small number of distinct state
-machines, each of which has only a small number of states (a little
-over three on average, and in no case more than fourteen).
-Furthermore, the time taken is dominated by the time spent replaying
-the log file (especially for the most realistic bug,
-\verb|thunderbird|), suggesting that improvements to our replay engine
-would yield significant performance gains.
+machines each of which has only a small number of states (a little
+over three on average, and in no case more than fourteen).  All
+experiments were conducted on an Intel Q6600 with 8GiB of RAM running
+64-bit Linux 2.6.28.
 
 \begin{figure*}
 \subfigure[Length of the phases, as fractions of the entire
@@ -870,8 +868,7 @@ would yield significant performance gains.
 \caption{Breakdown of time spent in various phases of the analysis
   process.  Results presented are mean and standard deviation of five
   runs of the fix-generating program applied to a single log file for
-  each bug.  Experiments were conducted on an Intel Q6600 with 8GiB of
-  RAM running 64-bit Linux 2.6.28.}
+  each bug.}
 \end{figure*}
 
 Figure \ref{fig:phasedistribution} shows how the time taken is
@@ -884,9 +881,9 @@ are not relevant to the observed crash quickly, so should be able to
 scale up to more complicated bugs in a reasonably straightforward
 way\editorial{Not sure I believe that}.  Second, for the very
 long-running \verb|thunderbird| test the running time is completely
-dominated by the phases which involve replaying the log.  This is
-unsurprising, as it has by far the largest logfile, reflecting its
-greater complexity.
+dominated by the phases which involve replaying the log.  This
+suggests that improvements to our replay engine would significantly
+performance gains.
 
 Figure \ref{fig:timesignoringreplay} shows how much time is taken by
 the various phases ignoring the time taken to replay the log file.
@@ -894,17 +891,16 @@ One interesting observation on this graph is that \verb|thunderbird|
 spends by far the least time generating fixes (0.2$\mu{}$s versus
 hundreds of milliseconds to a few seconds for the other tests),
 despite taking by far the most time overall (an hour and a half versus
-less than ten seconds).  This is because in the \verb|thunderbird|
-test the buggy code is run only once whereas the other tests run the
-buggy code in a tight loop until it crashes, and so the logs contain
-many instances of both the critical code and stores to the relevant
-memory locations.  The state machines must therefore by evaluated in
-many more contexts in the artificial bugs, which dramatically
-increases the time taken by the analysis.  This is an encouraging
-result: most bugs occur in code which is executed infrequently, and so
-it would be reasonable to expect that most bugs would have analysis
-time more similar to the \verb|thunderbird| bug than to the artificial
-ones.
+less than ten seconds).  This is because the artificial test cases run
+the buggy code in a tight loop, so the log contains many instances of
+the buggy code and many stores to the relevant addresses, whereas
+\verb|thunderbird| runs it only once.  The state machines must
+therefore by evaluated in far fewer contexts in the artificial bugs,
+which dramatically reduces the time taken by the analysis.  This is an
+encouraging result: most bugs occur in code which is executed
+infrequently, and so it would be reasonable to expect that most bugs
+would have analysis time more similar to the \verb|thunderbird| bug
+than to the artificial ones.
 
 We also investigated how the analysis depends on the exact details of
 the way in which a particular bug is reproduced, by running our tool
