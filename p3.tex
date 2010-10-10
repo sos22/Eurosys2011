@@ -365,14 +365,11 @@ each edge in the machine has a list of $\langle{}$address, value,
 size$\rangle{}$ tuples, where address and value can be arbitrary
 expressions, indicating what stores the program will issue when it
 follows that edge.  Backtracking across a store instruction is then a
-simple matter of adding another entry to this list.  Unfortunately,
-the lists of stores associated with an edge in the state machine can
-become quite large for even modest test cases, and the vast majority
-of these stores will never be used.  We therefore ignore stores which
-occur more than a certain distance from the point for which the state
-machine is being derived, which both reduces the number of stores
-which have to be recorded and, more importantly, allows many nodes in
-the CFG to be merged\editorial{This needs some eval}.
+simple matter of adding another entry to this list.\editorial{I used
+  to have a bit about dropping deep loads, but having run the
+  experiments, it turns out that really doesn't matter.  Which is odd,
+  because it used to be a major optimization, but I guess some of the
+  improvements to the alias resolution stuff must have obviated it.}
 
 Many load instructions will access a thread's local stack.  While it
 is, in principle, possible for one of these accesses to be involved in
