@@ -112,7 +112,7 @@ generating the fix itself takes only a moderate amount of time
 (ranging from seconds in simple cases to a few hours in more
 complicated ones).  SLI does not depend on programmer annotations or
 semantic knowledge of the program's intended behavior, but can make
-(limited) use of such information when it is available.
+use of such information when it is available.
 
 Our approach consists of several key phases.  First, the bug must be
 captured under a deterministic replay system.  The exact details of
@@ -355,12 +355,7 @@ We solve this problem by labelling each load expression with the
 instruction pointer and call stack at the point at which it is issued,
 which allows state machines to refer to loads which have not yet
 happened, and hence to capture the effects of future loads on the
-thread's behavior.  Note that these labels can be ambiguous, if the
-program's control flow loops or a single instruction issues multiple
-memory accesses.  In the case of the x86 architecture, all common
-instructions which perform multiple loads can be converted into loops,
-and we do so; we discuss the handling of loops in section
-\ref{sect:branch_instrs}.
+thread's behavior.
 
 For example, the previously-derived state machine for instruction
 \verb|H| of figure \ref{fig:broken_privatize} produces a state machine
@@ -453,16 +448,21 @@ captured execution.
 
 Loops also complicate this simple algorithm.  We avoid this problem by
 simply breaking them, removing some subset of the graph's edges so as
-to eliminate the loop.  This has the useful side-effect of
-disambiguating the labels used to refer to load instructions: in a
-loop-free control flow graph, each instruction is executed at most
-once, and so dynamic instructions can be referred to unambiguously by
-their static location in the CFG.  We choose edges to remove based on
-two heuristics.  First, we try not to remove any edges which are
+to eliminate the loop.  We choose edges to remove based on two
+heuristics.  First, we try not to remove any edges which are
 represented in the captured execution.  Second, we try not to
 partition the graph, so that as many instructions as possible, and
 hence as much of the program's behavior as possible, are represented
-in the final state machine.
+in the final state machine.  
+
+Breaking loops has the useful side-effect of disambiguating the labels
+used to refer to load instructions: in a loop-free control flow graph,
+each instruction is executed at most once, and so dynamic instructions
+can be referred to unambiguously by their static location in the CFG.
+In the case of the x86 architecture, all common instructions which
+perform multiple loads can be converted into loops, which can then be
+broken in the usual way, and so this is sufficient to ensure that any
+static instruction issues at most one dynamic load.
 
 The result is a DAG of instructions, rooted at the branch instruction
 and with state machines at all of its leaves, which approximates the
@@ -1108,17 +1108,13 @@ if multiple threads were shut down at the same time.  Somewhat
 simplified, the code looked like this:
 
 \begin{verbatim}
-_Unwind_ForcedUnwind()
-{
+_Unwind_ForcedUnwind() {
     if (libgcc_s_forcedunwind == NULL)
         pthread_cancel_init();
     libgcc_s_forcedunwind();
 }
-
-pthread_cancel_init()
-{
-    if (done_init)
-        return;
+pthread_cancel_init() {
+    if (done_init) return;
     libgcc_s_forcedunwind = _forcedunwind_impl;
     done_init = 1;
 }
@@ -1132,15 +1128,13 @@ code actually executed corresponded to\footnote{Unfortunately, only
   prevented us from testing with the real bug.}:
 
 \begin{verbatim}
-  _Unwind_ForcedUnwind()
-  {
+  _Unwind_ForcedUnwind() {
 1:  l = libgcc_s_forcedunwind;
-2:  if (l == NULL) {
-3:      if (done_init) {
-4:          libgcc_s_forcedunwind = l =
-                _forcedunwind_impl;
-5:          done_init = 1;
-6:      }
+2:  if (l == NULL &&
+3:      done_init) {
+4:    libgcc_s_forcedunwind = l =
+        _forcedunwind_impl;
+5:    done_init = 1;
 7:  }
 8:  l();
   }
@@ -1186,27 +1180,19 @@ to the behavior which a user might have encountered.  The relevant
 parts of the program are as follows:
 
 \begin{verbatim}
-void nsImapProtocol::CloseStreams()
-{
-  ...
-  if (m_transport)
-  {
+void nsImapProtocol::CloseStreams() {
+  if (m_transport) {
       m_transport->Close(NS_ERROR_ABORT);
       m_transport = nsnull;
   }
-  ...
 }
 \end{verbatim}
 
 \begin{verbatim}
-PRBool nsImapProtocol::ProcessCurrentURL()
-{
-  ...
+PRBool nsImapProtocol::ProcessCurrentURL() {
   if (m_transport)
     m_transport->SetTimeout(
-      nsISocketTransport::TIMEOUT_READ_WRITE,
-      PR_UINT32_MAX);
-  ...
+      TIMEOUT_READ_WRITE, PR_UINT32_MAX);
 }
 \end{verbatim}
 
