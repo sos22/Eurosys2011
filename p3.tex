@@ -911,18 +911,10 @@ any downtime or loss of data.\editorial{Application communities?}
 \subsection{Semantic knowledge}
 \label{sect:semanticknowledge}
 SLI needs only very limited semantic knowledge of the intended
-behavior of the program.  At present, only two properties of the
-target program are assumed:
-
-\begin{itemize}
-\item Calling the \verb|__assert_fail| function is assumed to always
-  indicate a bug.
-\item Exiting due to an unhandled signal is likewise assumed to
-  indicate a bug.  In particular, raising \verb|SIGSEGV| will be
-  treated as a bug.
-\end{itemize}
-
-If the use-after-free analysis mentioned in section
+behavior of the program.  In the default configuration, the only
+assumptions made about the program are that calling
+\verb|__assert_fail| or exiting due to an unhandled signal always
+indicates a bug.  If the use-after-free analysis mentioned in section
 \ref{sect:prox_cause} is used then we also assume that the program
 will never deliberately use memory after passing it to the \verb|free|
 function.  There exist programs for which some or all of these
@@ -1119,7 +1111,7 @@ had not been recombined they would have predicted that the relevant
 instruction is safe if \verb|global2| is, respectively, \verb|5| or
 \verb|7|, and hence produced suggested fixes which synchronized the
 load at \verb|l2| against the stores to \verb|global2| independently
-of any accesses to \verb|global1|.  Neither of these fixes would
+of any accesses to \verb|global1|.  Neither of these fixes would be
 sufficient to fix the bug, and combining them directly would have
 meant that \verb|l2| could not occur at any point in the program's
 execution, so the second thread would not be able to make any progress
@@ -1166,7 +1158,7 @@ fix prioritisation heuristic.\smh{good example of a bad fix which is
 
 \verb|privatise|.  This is the converse of \verb|publish|: a thread is
 attempting to make a structure private, and does it incorrectly.  It
-is the same as the example program in figure
+is similar to the example program in figure
 \ref{fig:broken_privatize}, which has already been extensively
 discussed.
 
