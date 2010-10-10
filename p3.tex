@@ -567,7 +567,10 @@ specialized partitionings are then combined to produce a partitioning
 for the original unspecialized state machine: wherever all of the
 specialized partitionings make the same prediction, the unspecialized
 partition will have the same prediction, and wherever they differ the
-unspecialized partition will make no prediction at all.
+unspecialized partition will make no prediction at all.  If the
+resulting partition never predicts \verb|no-crash| then the original
+state machine is discarded, as it cannot possibly generate a useful
+fix.
 
 %% See \S\ref{sect:final_example} for a situation in which specialization
 %% allows us to derive an additional potential fix, and the discussion of
@@ -913,10 +916,42 @@ to be parsed also varied.  Similar results were obtained for the other
 bugs.\editorial{Not sure this is all that interesting, or that I've
   phrased it very well...}
 
-\subsection{Description of test bugs}
+\subsection{Effects of backtracking further}
+\label{sect:eval:backtrack}
+
+One important parameter to the system is how far to backtrack through
+the crashed thread, and hence how many state machines to generate,
+before attempting to derive a fix.  For implementation reasons, our
+prototype will always backtrack to a branch instruction, and for the
+above tests we limited this backtracking to ten branches.  Figure
+\ref{fig:eval:backtrack} shows the effect of changing this parameter
+upon the time taken by the non-replay components of the
+\verb|thunderbird| test (the replay components were unchanged).  It
+can be seen that the time taken increases rapidly as the distance
+which we backtrack increases, by a factor of more than 500 when going
+from a single level of backtracking to fifty levels.  However, the
+total time taken by the non-replay analysis is, even with a
+backtracking depth of 50, still just 620ms, or 0.013\% of the total
+time taken.  None of our tests depend on more than three levels of
+backtracking to produce a correct fix (and the \verb|thunderbird| test
+requires just one), and so this suggests that SLI should be able to
+backtrack sufficiently to solve most bugs without requiring excessive
+resources.
+
+\begin{figure}
+\includegraphics{clog/clog.pdf}
+\caption{Time taken by the analysis phases of the thunderbird bug, in
+  seconds, versus the level of backtracking applied to the crashed
+  thread, in dynamic branches.  Mean and standard deviation of three
+  runs.}
+\label{fig:eval:backtrack}
+\end{figure}
+
+
+\subsection{Detailed discussion of test bugs}
 \label{sect:bug_descr}
 
-We now describe our test bugs in more detail.
+We now discuss our test bugs in more detail.
 
 \verb|toctou| is a simple two-thread time-of-check, time-of-use race.
 In this test, one thread loops incrementing a counter, while another
@@ -930,16 +965,31 @@ This is a correct and minimal fix.
 \verb|twovar| is a two-variable atomicity violation.  In this test,
 there are two global variables, and one thread loops setting both to
 five and then setting both to seven while another thread loops loading
-both and asserting them to be equal.  SLI produces a single suggested
-fixes in this case.  The fix contains five critical sections: one
-protecting the two loads in the second thread, and four
-single-instruction sections each of which protects a single store in
-the other thread.  This correctly eliminates the bug.
+both and asserting them to be equal.  The core of the second thread
+consists of two instructions:
 
-This test illustrates the effect of state machine specialization.  For
-the instructions between the two loads, the initial single-threaded
-state machine generation process will produce a state machine similar
-to this:
+\begin{verbatim}
+l1: mov (global1) -> %rax
+l2: cmp %rax, (global2)
+    jne __assert_fail
+\end{verbatim}
+
+The state machine for \verb|l1| is
+
+\begin{verbatim}
+if load(global1@l1) != load(global2@l2)
+ then crash
+ else no-crash
+\end{verbatim}
+
+\noindent
+This produces a single candidate fix, consisting of two critical
+sections: one protecting instructions \verb|l1| and \verb|l2| in the
+second thread, and four single-instruction sections each of which
+protects a single store in the other thread.  This correctly
+eliminates the bug.
+
+\verb|l2| is more interesting.  The state machine generated is
 
 \begin{verbatim}
 if rax != load(global2@l2)
@@ -948,7 +998,6 @@ if rax != load(global2@l2)
 \end{verbatim}
 
 \noindent
-\ldots where \verb|l2| is the load of the second global variable.
 This will specialize in two ways:
 
 \begin{verbatim}
@@ -957,7 +1006,7 @@ if 5 != load(global2@l2)
  else no-crash
 \end{verbatim}
 
-and
+\noindent{}and
 
 \begin{verbatim}
 if 7 != load(global2@l2)
@@ -968,57 +1017,54 @@ if 7 != load(global2@l2)
 \noindent
 There are no points in the program's execution at which both machines
 will predict \verb|no-crash|, and so the original unspecialized
-machine is discarded as uninteresting.  If the specialized predictions
-had not been recombined they would have predicted that the relevant
-instruction is safe if \verb|global2| is, respectively, \verb|5| or
-\verb|7|, and hence produced suggested fixes which synchronized the
-load at \verb|l2| against the stores to \verb|global2| independently
-of any accesses to \verb|global1|.  Neither of these fixes would be
-sufficient to fix the bug, and combining them directly would have
-meant that \verb|l2| could not occur at any point in the program's
-execution, so the second thread would not be able to make any progress
-at all.
+machine is discarded and produces no suggested fixes.  If the
+specialized predictions had not been recombined they would have
+predicted that the relevant instruction is safe if \verb|global2| is,
+respectively, \verb|5| or \verb|7|, and hence produced suggested fixes
+which synchronized the load at \verb|l2| against the stores to
+\verb|global2| independently of any accesses to \verb|global1|.
+Neither of these fixes would be sufficient to fix the bug, and
+combining them directly would have meant that \verb|l2| could only
+occur if \verb|global2| was both \verb|5| and \verb|7| simultaneously.
+This is impossible, and so \verb|l2| would never be able to run at all
+and the program would have deadlocked.
 
-\verb|publish| is a broken implementation of the publish pattern.  In
-this pattern, a structure is initialised by one thread and then
+\verb|publish| is a buggy implementation of the publish pattern.  In
+this pattern, a structure is initialized by one thread and then
 published by writing its address into a global pointer.  Other threads
 then occasionally read this global pointer and, if it contains a
-non-\verb|NULL| pointer, use the referenced object.\editorial{I'm
-  convinced that this is a standard pattern, and that I didn't invent
-  the term, but I can't find a reference.}  This is safe if correctly
-implemented, but in this test the programmer published the structure
-before finishing constructing it, which leads to the other thread
-eventually crashing.  The test case consists of two threads, one of
-which repeatedly publishes and un-publishes a structure and the other
-of which repeatedly tests whether it has been published and, if it
-has, attempts to use it in a way which leads to an immediate crash if
-initialisation is not complete.
+non-\verb|NULL| pointer, use the referenced object.  This is safe if
+correctly implemented, but in this test the programmer published the
+structure before finishing constructing it, which leads to the other
+thread eventually crashing.  The test case consists of two threads,
+one of which repeatedly publishes and un-publishes a structure and the
+other of which repeatedly tests whether it has been published and, if
+it has, attempts to use it in a way which leads to an immediate crash
+if initialization is not complete.
 
 Our tool produced two suggested fixes in this case.  One of these was
-expected, consisting of two critical sections, one of which spanning
-the consuming thread from the point at which it loaded the pointer to
-the point at which it used its contents while the other spanned the
-actions of the producing thread from the point at which it published
-the structure to the point at which it finished initializing it.  This
-is a correct fix.
+expected, consisting of two critical sections, one protecting the
+consuming thread from the point at which it loaded the pointer to the
+point at which it used its contents and the other protecting the
+producing thread from the point at which it published the structure to
+the point at which it finished initializing it.  This is a correct
+fix.
 
 The other suggestion was an artifact of our test harness, which
-repeatedly published, initialised, unpublished, and then deinitialised
+repeatedly published, initialized, unpublished, and then deinitialized
 the same structure.  SLI was able to look through this pattern, and
 determined that it was sufficient to prevent the consuming thread from
 validating the published structure at any point between the
-deinitialisation in one iteration and the initialisation in the
+deinitialization in one iteration and the initialization in the
 subsequent one.  It therefore suggested a fix which protected the load
 which the consuming thread used to perform validation in one critical
 section and the range of the publishing thread from the
-deinitialisation to the subsequent initialisation in another,
+deinitialization to the subsequent initialization in another,
 completely ignoring the accesses related to publishing and
-unpublishing the structure.  While somewhat surprising, this is also a
-correct fix, completely preventing the observed bug, and, as it
+un-publishing the structure.  While somewhat surprising, this is also
+a correct fix, completely preventing the observed bug, and, as it
 produces slightly smaller critical sections, would be preferred by the
-fix prioritisation heuristic.\smh{good example of a bad fix which is
-  actually good.}\editorial{ref earlier discussion of privatize
-  example?}
+fix prioritisation heuristic.
 
 \verb|privatize| is the converse of \verb|publish|: a thread is
 attempting to make a structure private, and does it incorrectly.  It
@@ -1028,66 +1074,81 @@ discussed.
 
 \verb|glibc| is a kernel of glibc bug 2644 \cite{glibc2644}, which
 affected versions of glibc up to 2.5 and could lead to a crash if
-multiple threads were shut down at the same time.  Somewhat
-simplified, the code looked like this:
+multiple threads were shut down at the same time.  A simplified
+version of the code involved is shown in figure \ref{fig:glibc}, where
+\verb|forcedunwind| and \verb|done_init| are global variables.  Note
+that the bug here depends on the compiler's optimizer, and is not
+apparent at the source-code level\footnote{Unfortunately, only the
+  32-bit x86 version of gcc optimizes the function like this, and our
+  implementation of SLI assumes a 64-bit x86 program, and this
+  prevented us from testing with the real bug.}.  SLI operates
+entirely at the machine-code level, and so this does not present any
+additional complexity.
 
+\begin{figure*}
+  \begin{subfloat}
+    \begin{minipage}{57mm}
 \begin{verbatim}
 _Unwind_ForcedUnwind() {
-    if (libgcc_s_forcedunwind == NULL)
+    if (forcedunwind == NULL)
         pthread_cancel_init();
-    libgcc_s_forcedunwind();
+    forcedunwind();
 }
 pthread_cancel_init() {
     if (done_init) return;
-    libgcc_s_forcedunwind = _forcedunwind_impl;
+    forcedunwind =
+      _forcedunwind_impl;
     done_init = 1;
 }
 \end{verbatim}
-
-Where \verb|libgcc_s_forcedunwind| and \verb|done_init| are global
-variables.  The compiler's optimizer transformed this such that the
-code actually executed corresponded to\footnote{Unfortunately, only
-  the 32-bit x86 version of gcc optimizes the function like this, and
-  our implementation of SLI assumes a 64-bit x86 program, and this
-  prevented us from testing with the real bug.}:
-
+    \end{minipage}
+    \caption{Before optimizations}
+  \end{subfloat}
+  \begin{subfloat}
+    \begin{minipage}{57mm}
 \begin{verbatim}
   _Unwind_ForcedUnwind() {
-1:  l = libgcc_s_forcedunwind;
+1:  l = forcedunwind;
 2:  if (l == NULL &&
 3:      done_init) {
-4:    libgcc_s_forcedunwind = l =
-        _forcedunwind_impl;
-5:    done_init = 1;
+4:    forcedunwind = l =
+5:         _forcedunwind_impl;
+6:    done_init = 1;
 7:  }
 8:  l();
   }
 \end{verbatim}
-
-Our test is then to have two threads loop executing this:
-
+    \end{minipage}
+    \caption{After optimizations}
+  \end{subfloat}
+  \begin{subfloat}
+    \begin{minipage}{40mm}
 \begin{verbatim}
     while (1) {
-10:     pthread_barrier_wait();
-11:     _Unwind_ForcedUnwind();
-12:     pthread_barrier_wait();
-13:     done_init = 0;
-14:     libgcc_s_forcedunwind = NULL;
+10:   pthread_barrier_wait();
+11:   _Unwind_ForcedUnwind();
+12:   pthread_barrier_wait();
+13:   done_init = 0;
+14:   forcedunwind = NULL;
     }
 \end{verbatim}
+    \end{minipage}
+    \caption{Test harness}
+  \end{subfloat}
+  \label{fig:glibc}
+  \caption{Source code for the glibc test case.}
+\end{figure*}
 
 SLI produced six suggested fixes when run on a log generated by
 running this test.  The first of these had five critical sections: one
 covering the load on line \verb|1| to the load of \verb|done_init| on
 line \verb|3|, and one each for each of the stores on lines \verb|4|,
-\verb|5|, \verb|13|, and \verb|14|.  The other suggestions were
+\verb|6|, \verb|13|, and \verb|14|.  The other suggestions were
 supersets of this suggestion, extending it to include various accesses
-in \verb|pthread_barrier_wait|.
-
-This illustrates an important weakness of the approach.  First,
-because our implementation of SLI does not know anything about any
-OS-provided functionality, it cannot take advantage of any existing
-synchronization present in the program (in this case, the
+in \verb|pthread_barrier_wait|.  This illustrates an important
+weakness of the approach.  Because SLI does not know anything about
+any OS-provided functionality, it cannot take advantage of any
+existing synchronization present in the program (in this case, the
 \verb|pthread_barrier_wait|s make the critical sections protecting
 statements \verb|13| and \verb|14| redundant).  It also means that the
 analysis must explore these standard functions, and can sometimes
@@ -1105,14 +1166,9 @@ parts of the program are as follows:
 
 \begin{verbatim}
 void nsImapProtocol::CloseStreams() {
-  if (m_transport) {
-      m_transport->Close(NS_ERROR_ABORT);
+  if (m_transport)
       m_transport = nsnull;
-  }
 }
-\end{verbatim}
-
-\begin{verbatim}
 PRBool nsImapProtocol::ProcessCurrentURL() {
   if (m_transport)
     m_transport->SetTimeout(
@@ -1127,46 +1183,8 @@ program will crash.  This is essentially the same bug as
 \verb|toctou|, but embedded in a much large program.  As such, the
 final result is similar: a single suggested fix, with two critical
 sections, one containing the two accesses in \verb|ProcessCurrentURL|
-and one containing the assignment in \verb|CloseStreams|.  However,
-the process of generating a fix takes much longer: nearly eighty
-minutes, rather than a few seconds.  The vast bulk (more than 99\%) of
-this time is spent in the replay engine, reflecting the greater
-complexity of the target program and the fact that the bug simply took
-longer to reproduce, both of which lead to much larger log files.
-Note also that the log in this case starts at a snapshot of the
-program's state taken after it had completed initialisation, whereas
-the other test cases start at the very first instruction in the
-program; without this, the disparity would be even larger.
-
-\subsection{Effects of backtracking further}
-\label{sect:eval:backtrack}
-
-\begin{figure}
-\includegraphics{clog/clog.pdf}
-\caption{Time taken by the analysis phases of the thunderbird bug, in
-  seconds, versus the level of backtracking applied to the crashed
-  thread, in dynamic branches.  Mean and standard deviation of three
-  runs.}
-\label{fig:eval:backtrack}
-\end{figure}
-
-One important parameter to the system is how far to backtrack through
-the crashed thread.  For implementation reasons, our prototype will
-always backtrack to a branch instruction, and for the above tests we
-limited this backtracking to ten branches.  Figure
-\ref{fig:eval:backtrack} shows the effect of changing this parameter
-upon the time taken by the non-replay components of the
-\verb|thunderbird| test (the replay parts were unchanged).  It can be
-seen that the time taken increases rapidly as the distance which we
-backtrack increases, by a factor of more than 500 when going from a
-single level of backtracking to fifty levels.  Note, however, that the
-total time taken by the non-replay analysis is, even with a
-backtracking depth of 50, still just 620ms, or 0.013\% of the total
-time taken.  None of our tests depend on more than three levels of
-backtracking to produce a correct fix (and the \verb|thunderbird| test
-requires just one), and so this suggests that SLI should be able to
-backtrack sufficiently to solve most bugs in a reasonable amount of
-time.
+and one containing the assignment in \verb|CloseStreams|.  This fixes
+the bug.
 
 \section{Related work}\editorial{This is a bit of a bestiary.  Could do with a bit more analysis.}
 
@@ -1183,8 +1201,7 @@ are several important differences between their approach and ours:
   ``fix'' perfectly benign races.  It also means that the fixes cannot
   easily be applied without also requiring the Kivati runtime,
   whereas, once generated, SLI fixes can stand alone without any of
-  the rest of the SLI infrastructure, which may sometimes improve
-  performance.
+  the rest of the SLI infrastructure.
 \item Kivati requires access to the program's source code during the
   initial static analysis phase, whereas SLI only requires the binary.
 \item SLI can be applied to a wider class of bugs than Kivati, such as
