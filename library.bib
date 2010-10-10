@@ -570,7 +570,6 @@ journal = {International Conference on Software Engineering},
 keywords = {DIDUCE,Java},
 mendeley-tags = {DIDUCE,Java},
 title = {{Tracking down software bugs using automatic anomaly detection}},
-url = {http://portal.acm.org/citation.cfm?id=581377},
 year = {2002}
 }
 @article{Reiss2000,
@@ -755,15 +754,13 @@ year = {2009}
 }
 @inproceedings{Park2009,
 abstract = {Bug reproduction is critically important for diagnosing a production-run failure. Unfortunately, reproducing a concurrency bug on multi-processors (e.g., multi-core) is challenging. Previous techniques either incur large overhead or require new non-trivial hardware extensions. This paper proposes a novel technique called PRES (probabilis- tic replay via execution sketching) to help reproduce concurrency bugs on multi-processors. It relaxes the past (perhaps idealistic) ob- jective of reproducing the bug on the first replay attempt to signif- icantly lower production-run recording overhead. This is achieved by (1) recording only partial execution information (referred to as sketches) during the production run, and (2) relying on an in- telligent replayer during diagnosis time (when performance is less critical) to systematically explore the unrecorded non-deterministic space and reproduce the bug. With only partial information, our replayer may require more than one coordinated replay run to re- produce a bug. However, after a bug is reproduced once, PRES can reproduce it every time. We implemented PRES along with five different execution sketching mechanisms. We evaluated them with 11 representative applications, including 4 servers, 3 desktop/client applications, and 4 scientific/graphics applications, with 13 real world concurrency bugs of different types, including atomicity violations, order vio- lations and deadlocks. PRES (with synchronization or system call sketching) significantly lowered the production-run recording over- head of previous approaches (by up to 4416 times), while still re-producing most tested bugs in fewer than 10 replay attempts. More- over, PRES scaled well with the number of processors; PRESs feedback generation from unsuccessful replays is critical in bug re- production.},
-address = {Big Sky, Montana},
 annote = {The PRES paper.  Try to discover schedulings which are consistent with a sketch recording of a program run, using a somewhat under-specified search process.  Implemented on pin.  Results are very promising: many bugs reproduce quickly and run-time overheads are low.  Don't consider non-pin recorders, which is kind of a surprise; many of their experiments would go faster if they did that.
 
         
 Observed overheads for their best case were on the order of 10-40\%, depending on application; would have been 5-20\% if they'd avoided pin.  Search times are very quick (O(minutes)), although for some reason they dropped a bunch of benchmarks for that section of the paper; hmm.},
 author = {Park, S. and Zhou, Y. and Xiong, W. and Yin, Z. and Kaushik, R. and Lee, K.H. and Lu, S.},
-booktitle = {22nd ACM Symposium on Operating Systems Principles},
+booktitle = {SOSP},
 file = {:home/sos22/papers/logging/sketches.pdf:pdf},
-publisher = {ACM SIGOPS},
 title = {{PRES: Probabilistic Replay with Execution Sketching on Multiprocessors}},
 year = {2009}
 }
@@ -852,10 +849,8 @@ Performance hit is significant but tolerable for some applications: between 3\% 
 
       },
 author = {Rinard, M. and Cadar, C. and Dumitran, D. and Roy, D.M. and Leu, T. and {Beebee Jr}, W.S.},
-booktitle = {Proceedings of the 6th conference on Symposium on Opearting Systems Design $\backslash$\& Implementation-Volume 6},
+booktitle = {OSDI},
 file = {:home/sos22/papers/random/failure-obliviousness.pdf:pdf},
-pages = {2121},
-publisher = {USENIX Association Berkeley, CA, USA},
 title = {{Enhancing server availability and security through failure-oblivious computing}},
 year = {2004}
 }
@@ -888,11 +883,10 @@ Schedule is an exploration of a Lamport-style happens-before graph.
         
 Rather impressive.},
 author = {Musuvathi, M. and Qadeer, S. and Ball, T. and Basler, G. and Nainar, P.A. and Neamtiu, I.},
-booktitle = {Proceedings of the Eighth Symposium on Operating Systems Design and Implementation (OSDI’08)},
+booktitle = {OSDI},
 file = {:home/sos22/papers/debugging/musuvathi.pdf:pdf},
 keywords = {chase refs},
 mendeley-tags = {chase refs},
-pages = {267--280},
 title = {{Finding and reproducing heisenbugs in concurrent programs}},
 year = {2008}
 }
@@ -947,9 +941,8 @@ Rather cute, overall.
 
       },
 author = {Jula, H. and Tralamazza, D. and Zamfir, C. and Candea, G.},
-booktitle = {Proceedings of the 8th Symposium on Operating Systems Design and Implementation},
+booktitle = {OSDI},
 file = {:home/sos22/papers/debugging/jula.pdf:pdf},
-pages = {295--308},
 title = {{Deadlock immunity: Enabling systems to defend against deadlocks}},
 year = {2008}
 }
@@ -1216,13 +1209,10 @@ author = {Ratanaworabhan, Paruj and Burtscher, Martin and Kirovski, Darko and Zo
 doi = {10.1145/1504176.1504202},
 file = {:home/sos22/papers/automatic\_bug\_fixing/p173-ratanaworabhan.pdf:pdf},
 isbn = {9781605583976},
-journal = {Proceedings of the 14th ACM SIGPLAN symposium on Principles and practice of parallel programming - PPoPP '09},
+journal = {{PPoPP}},
 keywords = {dynamic,race detection and toleration,runtime support},
-pages = {173},
-publisher = {ACM Press},
 title = {{Detecting and tolerating asymmetric races}},
-url = {http://portal.acm.org/citation.cfm?doid=1504176.1504202},
-year = {2008}
+year = {2009}
 }
 @article{Netzer1992,
 author = {Netzer, R.H.B. and Miller, B.P.},
@@ -1250,12 +1240,10 @@ FOO FOO FOO
 
       },
 author = {Altekar, G. and Stoica, I.},
-booktitle = {Proceedings of the ACM SIGOPS 22nd symposium on Operating systems principles},
+booktitle = {SOSP},
 file = {:home/sos22/papers/logging/altekar-sosp09.pdf:pdf},
 keywords = {debugging,deterministic replay,inference,multicore},
-pages = {193206},
-publisher = {ACM},
-title = {{ODR: output-deterministic replay for multicore debugging}},
+title = {{ODR: Output-Deterministic Replay for Multicore Debugging}},
 year = {2009}
 }
 @inproceedings{Musuvathi2008a,
@@ -1329,7 +1317,6 @@ url = {http://scholar.google.com/scholar?cluster=15211752039280312662\&hl=en\&as
 }
 @inproceedings{Ramalingam2009,
 abstract = {In this paper, we focus on concurrent programs that use locks to achieve isolation of data accessed by critical sections of code. We present ISOLATOR, an algorithm that guarantees isolation for well-behaved threads of a program that obey a locking discipline even in the presence of ill-behaved threads that disobey the locking discipline. ISOLATOR uses code instrumentation, data replication, and virtual memory pro- tection to detect isolation violations and delays ill-behaved threads to ensure isolation. Our instrumentation scheme re- quires access only to the code of well-behaved threads. We have evaluated ISOLATOR on several benchmark programs and found that ISOLATOR can ensure isolation with reason- able runtime overheads. In addition, we present three general desideratasafety, isolation, and permissivenessfor any scheme that attempts to ensure isolation, and formally prove that ISOLATOR satisfies all of these desiderata.},
-address = {Washington, DC},
 annote = {Tries to make synchronisation-correct threads behave correctly even in the presence of non-synchronisation-correct threads.  Not obvious why that's useful.  Involves snapshotting lots of data when you acquire a lock, and then merging the results back in when you release it.  Non-synchronised threads are stopped by memory protection, and effectively made to acquire an implicit per-page lock.  Assumes synchronisation is at page granularity (and plays with the memory allocator to make that happen, at the expense of greater memory fragmentation).  Requires that the programmer provides a manually-specified locking discipline.  Assume access to source code, and requires you to use a special compiler for the synchronised threads.  Only evaluate with microbenchmarks, and present the results in the dumbest way imaginable, but overhead isn't obviously excessive.
 
         
@@ -1340,7 +1327,6 @@ author = {Ramalingam, G. and Rajamani, S.K. and Ranganath, V.P. and Vaswani, K. 
 booktitle = {Asplos'09},
 file = {:home/sos22/papers/automatic\_bug\_fixing/p181-rajamani.pdf:pdf},
 keywords = {concurrency,isolation,memory protection},
-pages = {181--192},
 publisher = {ACM},
 title = {{Isolator: Dynamically Ensuring Isolation in Concurrent Programs}},
 year = {2009}
@@ -1371,7 +1357,6 @@ Not a bad paper, overall, but I think the software approach which I'm thinking a
 author = {Lucia, Brandon and Devietti, Joseph and Ceze, Luis and Strauss, Karin},
 doi = {10.1109/MM.2009.1},
 file = {:home/sos22/papers/automatic\_bug\_fixing/lucia-atomaid.pdf:pdf},
-issn = {0272-1732},
 journal = {IEEE Micro},
 month = jan,
 number = {1},
@@ -1539,7 +1524,6 @@ year = {1997}
 }
 @inproceedings{Qin2007,
 abstract = {Many applications demand availability. Unfortunately, software failures greatly reduce system availability. Prior work on surviving software failures suffers from one or more of the following limita- tions: Required application restructuring, inability to address deter- ministic software bugs, unsafe speculation on program execution, and long recovery time. This paper proposes an innovative safe technique, called Rx, which can quickly recover programs from many types of software bugs, both deterministic and non-deterministic. Our idea, inspired from allergy treatment in real life, is to rollback the program to a recent checkpoint upon a software failure, and then to re-execute the program in a modified environment. We base this idea on the observation that many bugs are correlated with the execution envi- ronment, and therefore can be avoided by removing the allergen from the environment. Rx requires few to no modifications to ap- plications and provides programmers with additional feedback for bug diagnosis. We have implemented Rx on Linux. Our experiments with four server applications that contain six bugs of various types show that Rx can survive all the six software failures and provide transparent fast recovery within 0.017-0.16 seconds, 21-53 times faster than the whole program restart approach for all but one case (CVS). In contrast, the two tested alternatives, a whole program restart ap- proach and a simple rollback and re-execution without environmen- tal changes, cannot successfully recover the three servers (Squid, Apache, and CVS) that contain deterministic bugs, and have only a 40\% recovery rate for the server (MySQL) that contains a non- deterministic concurrency bug. Additionally, Rxs checkpointing system is lightweight , imposing small time and space overheads.},
-address = {Brighton},
 annote = {Tries to hide bugs by noticing when they happen, and then rolling back and retrying with a slightly modified environment.  They claim to be ``safe'', but only by redefining the word.
         
 Basic approach is the same as mine: run the program taking regular snapshots, and then following a bug roll back and try running forwards in a slightly different way.  The slight differences are pretty coarse, though: the only thread-related one is to change the scheduling parameters.  There's no real attempt to figure out an actual ``fix'' for the bug, it just makes it go away this time.  It might well reproduce later, in which case RX will need to go and re-do its search.
@@ -1553,17 +1537,14 @@ author = {Qin, F and Tucek, J and Zhou, Y and Sundaresan, J},
 booktitle = {SOSP},
 file = {:home/sos22/.local/share/data/Mendeley Ltd./Mendeley Desktop/Downloaded/Qin et al. - 2007 - Rx Treating bugs as allergies—a safe method to survive software failures.pdf:pdf},
 keywords = {Availability,Bug,Reliability,Software Failure},
-publisher = {ACM},
-title = {{Rx: Treating bugs as allergiesa safe method to survive software failures}},
+title = {{Rx: Treating bugs as allergies: a safe method to survive software failures}},
 year = {2005}
 }
 @inproceedings{Zamfir2010,
 abstract = {Debugging real systems is hard, requires deep knowledge of the code, and is time-consuming.Bug reports rarely provide sufficient information, thus forcing developers to turn into detectives searching for an explanation of how the program could have arrived at the reported failure point. Execution synthesis is a technique for automating this de- tective work: given a program and a bug report, it automat- ically produces an execution of the program that leads to the reported bug symptoms. Using a combination of static analysis and symbolic execution, it “synthesizes” a thread schedule and various required programinputs that cause the bug to manifest. The synthesized execution can be played back deterministically in a regular debugger, like gdb. This is particularly useful in debugging concurrency bugs. Our technique requires no runtime tracing or program modifications, thus incurring no runtime overhead and being practical for use in production systems.We evaluate ESD— a debugger based on execution synthesis—on popular soft- ware (e.g., the SQLite database, ghttpdWeb server,HawkNL network library, UNIX utilities): starting from mere bug re- ports, ESD reproduces on its own several real concurrency and memory safety bugs in less than three minutes.},
-address = {Paris},
 author = {Zamfir, C. and Candea, G.},
-booktitle = {European Conference on Computer Systems},
+booktitle = {EuroSys},
 file = {:home/sos22/papers/debugging/esd.pdf:pdf;:home/sos22/papers/debugging/esd.pdf:pdf},
-publisher = {ACM},
 title = {{Execution Synthesis: A Technique for Automated Software Debugging}},
 year = {2010}
 }
@@ -1762,7 +1743,6 @@ author = {Engler, D and Ashcraft, K},
 file = {::},
 journal = {ACM SIGOPS Operating Systems Review},
 title = {{RacerX: Effective, static detection of race conditions and deadlocks}},
-url = {http://portal.acm.org/citation.cfm?id=945468},
 year = {2003}
 }
 @article{Zamfir,
@@ -2397,7 +2377,6 @@ They try to derive some probabilities, but they need to make some highly implaus
 author = {Berger, ED and Zorn, BG},
 booktitle = {PLDI},
 file = {:home/sos22/papers/random/p158-berger.pdf:pdf},
-publisher = {ACM},
 title = {{DieHard: probabilistic memory safety for unsafe languages}},
 year = {2006}
 }
@@ -2407,13 +2386,6 @@ journal = {Proceedings of the  },
 title = {{Forcing small models of conditions on program interleaving for detection of  }},
 url = {http://portal.acm.org/citation.cfm?id=1639622.1639629},
 year = {2009}
-}
-@article{Chew2010,
-author = {Chew, L and Lie, D},
-file = {::},
-title = {{Kivati: Fast Detection and Prevention of Atomicity Violations}},
-url = {http://www.eecg.toronto.edu/\~{}lie/papers/chew-eurosys2010-web.pdf},
-year = {2010}
 }
 @article{Weeratunge2010,
 author = {Weeratunge, D and Zhang, X and Jagannathan, S},
@@ -2647,7 +2619,7 @@ Kind of nice.  It's basically what I was going to do when I was thinking about f
       },
 author = {Novark, G and Berger, ED and Zorn, BG},
 file = {:home/sos22/papers/random/p1-novark.pdf:pdf},
-journal = {Proceedings of the 2007 ACM SIGPLAN conference on Programming Language Design and Implementation},
+journal = {PLDI},
 keywords = {DieFast,Exterminator,dynamic memory allocation,error correction,memory errors,probabilistic memory safety,ran- domized algorithms},
 title = {{Exterminator: Automatically correcting memory errors with high probability}},
 year = {2007}
@@ -4471,7 +4443,6 @@ year = {2010}
 }
 @inproceedings{Chew2010a,
 abstract = {Bugs in concurrent programs are extremely difficult to find and fix during testing. In this paper, we propose Kivati, which can efficiently detect and prevent atomicity violation bugs. Kivati imposes an average run-time overhead of 19\%, whichmakes it practical to deploy on software in production environments. The key attribute that allows Kivati to impose this low overhead is its use of hardware watchpoints, which can be found on most commodity processors. Kivati com- bines watchpoints with a simple static analysis that anno- tates regions of codes that likely need to be executed atomi- cally. Thewatchpoints are then used tomonitor these regions for interleaving accesses that may lead to an atomicity vio- lation. When an atomicity violation is detected, Kivati dy- namically reorders the access to prevent the violation from occurring.Kivati can be run in preventionmode,which opti- mizes for performance, or in bug-findingmode,which trades some performance for an enhanced ability to find bugs. We implement and evaluate a prototype ofKivati that pro- tects applications written in C on Linux/x86 platforms. We find that Kivati is able to detect and prevent atomicity viola- tion bugs in real applications, and imposes very reasonable overheadswhen doing so.},
-address = {Paris},
 annote = {(from presentation at eurosys10)
 
         
@@ -4497,11 +4468,10 @@ Potential source of bugs?
 
       },
 author = {Chew, Lee and Lie, David},
-booktitle = {Eurosys 2010},
+booktitle = {EuroSys 2010},
 file = {:home/sos22/papers/eurosys10/p307.pdf:pdf},
 keywords = {atomicity violation,kivati,watchpoint},
 pages = {307--319},
-publisher = {ACM},
 title = {{Kivati : Fast Detection and Prevention of Atomicity Violations}},
 year = {2010}
 }
@@ -4731,7 +4701,6 @@ year = {2006}
 }
 @inproceedings{Pratikakis2006,
 abstract = {One common technique for preventing data races in multi-threaded programs is to ensure that all accesses to shared locations are con- sistently protected by a lock.We present a tool called LOCKSMITH for detecting data races in C programs by looking for violations of this pattern. We call the relationship between locks and the loca- tions they protect consistent correlation, and the core of our tech- nique is a novel constraint-based analysis that infers consistent cor- relation context-sensitively, using the results to check that locations are properly guarded by locks.We present the core of our algorithm for a simple formal language $\lambda$ which we have proven sound, and discuss how we scale it up to an algorithm that aims to be sound for all of C. We develop several techniques to improve the preci- sion and performance of the analysis, including a sharing analysis for inferring thread locality; existential quantification for modeling locks in data structures; and heuristics for modeling unsafe fea- tures of C such as type casts. When applied to several benchmarks, including multi-threaded servers and Linux device drivers, LOCK- SMITH found several races while producing a modest number of false alarms.},
-address = {Ottawa},
 annote = {Static lockset analysis for C.
 
         
@@ -4748,18 +4717,15 @@ Actually kind of nice.  Not sure how much their ``safety'' buys them, because it
 
       },
 author = {Pratikakis, Polyvios and Foster, Jeffrey S and Hicks, Michael},
-booktitle = {PLDI'06},
+booktitle = {PLDI},
 file = {:home/sos22/papers/random/10.1.1.83.8841.pdf:pdf},
 keywords = {context-sensitivity,correlation,locksmith,multi-threaded programming,race detection,type inference},
-pages = {320--331},
-publisher = {ACM},
 title = {{LOCKSMITH : Context-Sensitive Correlation Analysis for Race Detection}},
 year = {2006}
 }
 @article{Bacon1994,
 abstract = {In the last three decades a large number of compiler transformations for optimizing programs have been implemented. Most optimizations for uniprocessors reduce the number of instructions executed by the program using transformations based on the analysis of scalar quantities and data-flow techniques. In contrast, optimizations for high-performance superscalar, vector, and parallel processors maximize parallelism and memory locality with transformations that rely on tracking the properties of arrays using loop dependence analysis.This survey is a comprehensive overview of the important high-level program restructuring techniques for imperative languages, such as C and Fortran. Transformations for both sequential and various types of parallel architectures are covered in depth. We describe the purpose of each transformation, explain how to determine if it is legal, and give an example of its application.Programmers wishing to enhance the performance of their code can use this survey to improve their understanding of the optimizations that compilers can perform, or as a reference for techniques to be applied manually. Students can obtain an overview of optimizing compiler technology. Compiler writers can use this survey as a reference for most of the important optimizations developed to date, and as bibliographic reference for the details of each optimization. Readers are expected to be familiar with modern computer architecture and basic program compilation techniques.},
 author = {Bacon, David F. and Graham, Susan L. and Sharp, Oliver J.},
-issn = {0360-0300},
 journal = {ACM Computing Surveys (CSUR)},
 keywords = {compilation,dependence analysis,locality,multiprocessors,optimization,parallelism,superscalar processors,vectorization},
 number = {4},
