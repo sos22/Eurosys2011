@@ -554,7 +554,8 @@ and accesses to the local stack\footnote{This may result in the
   obvious way.}.  This effectively factors out the effects of
 thread-local computation, converting each state machine into a set of
 state machines which individually depend only on the content of shared
-memory.
+memory.  State machines which reduce to a constant are discarded at
+this stage.
 
 These specialized state machines are then evaluated at each store to a
 relevant address, partitioning the log into regions which crash (if
@@ -620,8 +621,8 @@ expense of slightly greater implementation complexity.
 Crashing regions which cross threads cannot be protected in this way.
 We re-designate those areas of the log as having an unknown crash
 prediction, which causes SLI to give up trying to protect them and to
-penalize the resulting fix when selecting which fix to actually apply;
-see the next section for details.
+penalize the resulting fix when selecting which to actually apply; see
+the next section for details.
 
 %% Note the non-LaTeX reference from the previous section to the next
 %% one!
@@ -656,12 +657,13 @@ heuristic does not appear to be critical.
 \label{sect:final_example}
 
 Our earlier example derived the state machine shown in figure
-\ref{fig:state_machines_instr_a}.  The list of relevant addresses will
-contain \verb|global1|, \verb|fallback| and \verb|variable1|.
-Note that the load in instruction \verb|J| is \emph{not} represented
-in this list: the value which it loads does not affect whether or not
-the program crashes, and so it is not considered relevant for these
-purposes.
+\ref{fig:state_machines_instr_a} for the program shown in
+\ref{fig:broken_privatize}.  The list of relevant addresses for this
+state machine will contain \verb|global1|, \verb|fallback| and
+\verb|variable1|.  Note that the load in instruction \verb|J| is
+\emph{not} represented in this list: the value which it loads does not
+affect whether or not the program crashes, and so it is not considered
+relevant for these purposes.
 
 \begin{table}
 \begin{tabular}{ll}
@@ -678,17 +680,17 @@ purposes.
 ...
 \end{tabular}
 \caption{Relevant store log for example}
-\label{fig:relevant_stores}
+\label{tab:relevant_stores}
 \end{table}
 
 Assuming that the only stores to relevant addresses are those shown in
 figure \ref{fig:broken_privatize}, the relevant store log will then be
-as shown in figure \ref{fig:relevant_stores}.  The state machine does
+as shown in table \ref{tab:relevant_stores}.  The state machine does
 not depend on registers or the thread-local stack, and so
-specialization will have no effect.  We therefore proceed to classify
-the store log into crashing and non-crashing components.  In this
-particular case, the state machine will predict that no state can
-crash, which is correct: if the loads in the state machine had
+specialization will have no effect, and we proceed directly to
+classifying the store log into crashing and non-crashing components.
+In this particular case, the state machine will predict that no state
+can crash, which is correct: if the loads in the state machine had
 executed atomically, with respect to the stores present in the store
 log, the program would not have crashed.  This suggests a potential
 fix with five critical sections: one covering instructions \verb|A| to
@@ -697,10 +699,10 @@ each of instructions \verb|V|, \verb|W|, \verb|X|, and \verb|Y| in
 thread 2.  This would fix the bug, and will be suggested by
 SLI.\editorial{Not a minimal fix...}
 
-This is not the complete story, however\editorial{Don't like that
-  phrasing}, as state machine generation will also have produced
-machines for other instructions in the crashing thread.  In
-particular, the machine produced for instruction \verb|F| will be:
+This is not the only fix which will be suggested, however.  State
+machine generation will also have produced machines for other
+instructions in the crashing thread.  In particular, the machine
+produced for instruction \verb|F| will be:
 
 \begin{verbatim}
 if BadAddr (load(load(rsp@F)@G)+48)
@@ -725,26 +727,22 @@ if BadAddr (load(fallback@G)+48)
  else no-crash
 \end{verbatim}
 
-The second one will always predict \verb|no-crash|, assuming that the
-fallback structure is always valid, and so is discarded.  The first
+The captured execution shows no writes to \verb|fallback|, and so the
+\verb|load| in the second machine is replaced with a constant and the
+entire machine is subject to constant folding, producing the trivial
+machine \verb|no-crash|.  It is therefore discarded.  The first
 machine, however, predicts a crash whenever \verb|variable1| contains
 something which is not a valid pointer, which occurs from \verb|Y.1|
 to \verb|V.2| in the store log (and subsequent repeats).  This
-suggests an alternative fix with two critical sections:
-
-\begin{itemize}
-\item One single-instruction critical section covering instruction
-  \verb|G| in thread 1.
-\item A second critical section covering instructions \verb|Y| to
-  \verb|V| in thread 2.  Note that this section will wrap around the
-  loop, which somewhat complicates the implementation of the binary
-  patcher; see section \ref{sect:binpatch} for our approach to this
-  problem.
-\end{itemize}
-
-This fix will also be suggested by SLI, and would also fix the bug.
-Furthermore, because it has fewer critical sections, it will be
-preferred by the prioritisation heuristic.
+suggests an alternative fix with two critical sections: one
+single-instruction critical section covering instruction \verb|G| in
+thread 1, and a second covering \verb|Y| to \verb|V| in thread 2 (the
+second section will wrap around the loop, which somewhat complicates
+the implementation of the binary patcher; see section
+\ref{sect:binpatch} for our approach to this problem).  This fix will
+also be suggested by SLI, and would also fix the bug.  Furthermore,
+because it has fewer critical sections, it will be preferred by the
+prioritisation heuristic.
 
 It could be argued, however, that this smaller fix is inferior to the
 larger alternative, despite completely eliminating the crash and
@@ -754,24 +752,22 @@ presumably intended to privatize the structure at instruction
 \verb|X|, and so might reasonably have defined a ``correct'' fix to be
 one which ensures correct privatization, a goal which is achieved by
 the first fix but not by the second.  SLI, by contrast, has no notion
-of intended behavior, or indeed any form of software engineering
-construct, and so selects its fix based on the more mundane concerns
-of avoiding the crash and minimizing the impact on performance.  This
-is both a strength and a weakness: a strength in that it increases the
+of intended behavior, or indeed any form of good software engineering
+practice, and so selects its fix based on the more mundane concerns of
+avoiding the crash and minimizing the impact on performance.  This is
+both a strength and a weakness: a strength in that it increases the
 likelihood that a low-overhead fix will be found, and a weakness in
 that the fixes cannot be translated back to source-level patches and
 applied unthinkingly by the application programmer.
 
-To put it another way: producing a long-term, maintainable fix for a
-bug is a different problem to producing a short-term one which simply
+Producing a long-term, maintainable fix for a bug is, in general, a
+different problem to producing a short-term one which simply
 eliminates its symptoms, and the techniques used by SLI are much more
 applicable to the latter.  This will be true of any approach which
 does not rely on programmer annotations (ignoring trivial systems
 which just pattern-match the buggy code against a library of common
 bugs and their standard fixes); the extra flexibility gained by being
-applicable to arbitrary binaries makes this a reasonable
-trade-off.\editorial{Could make more of this, and maybe pull it a bit
-  earlier.}
+applicable to arbitrary binaries makes this a reasonable trade-off.
 
 \subsection{Creating a binary patch}
 \label{sect:binpatch}
@@ -813,11 +809,6 @@ target program using \verb|LD_PRELOAD| (or an equivalent mechanism).
 The stub loader is then responsible for actually applying the patch to
 the program, either by patching a jump into the entrypoint instruction
 or using the processor's debug facilities.
-
-One potentially useful property of these patches is that they can be
-straightforwardly applied to running programs, and so once a fix has
-been discovered it could be applied to running applications without
-any downtime or loss of data.\editorial{Application communities?}
 
 \section{Semantic knowledge}
 \label{sect:semanticknowledge}
