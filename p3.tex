@@ -1298,8 +1298,8 @@ There is a similar balance to be struck between attempting to be
 completely generic and using semantic knowledge, both of the program
 and of its libraries.  At present, we make very little use of this
 information, and so our implementation is generic across a wide range
-of applications but struggles with more complicated bugs.  Carefully
-incorporating more semantic information, and providing a generic way
+of applications but struggles with more complicated bugs.
+Incorporating more semantic information, or providing a generic way
 for programmers to introduce their own semantic models, might improve
 our ability to produce useful, performant fixes.  One particularly
 intriguing approach would be to combine SLI with an invariant
@@ -1316,7 +1316,7 @@ analysis to detect which patches are likely to lead to deadlocks and
 to penalize them in the fix selection phase.  Alternatively, SLI could
 be integrated with a deadlock immunity system such as
 Dimmunix\cite{Jula2008}, which would detect and fix deadlocks when
-they happen.  The system would then hopefully converge on a stack
+they happen.  The system would then hopefully converge on a state
 which is both deadlock and race free.
 
 \section{Conclusions}
