@@ -26,8 +26,8 @@ for depth in $depths
 do
     for field in inc_replay build_cms gen_fixes totals
     do
-	mean=$(summarise_numbers.py < output/${field}.${depth} | grep mean | cut -d' ' -f 2)
-	sd=$(summarise_numbers.py < output/${field}.${depth} | grep sd | cut -d' ' -f 2)
+	mean=$(../summarise_numbers.py < output/${field}.${depth} | grep mean | cut -d' ' -f 2)
+	sd=$(../summarise_numbers.py < output/${field}.${depth} | grep sd | cut -d' ' -f 2)
 	echo "$depth $mean $sd" >> output/${field}.dat
     done
 done

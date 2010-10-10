@@ -780,38 +780,34 @@ must be instantiated into a binary patch to produce an actual fix.  We
 simplify the problem by detecting if the start and end of a critical
 section are in different functions (as delimited by \verb|call| and
 \verb|ret| instructions) and, if they are, backtracking up the call
-stack to their most recent common stack frame.  Besides simplifying
-the binary patching problem, this has the (sometimes) useful
-side-effect of expanding the critical section, and generally moving it
-to boundaries which are more likely to correspond to the original
-programmers' ideas about where critical section boundaries ``should
-be''\editorial{Rephrase}.
-
-Once we have obtained start and end points in the same function frame,
-we again examine the program's control flow graph, starting at the
-first instruction in the critical section.  This time, however, we do
-not break cycles, or make any unsafe approximations, so that the CFG
-precisely captures the program's behavior over the instructions where
-it is valid; indirect branches are replaced with special stub nodes
-which branch back to the original program text.  The CFG thus obtained
-is then trimmed to only contain paths starting at the first
-instruction in the critical section and ending at the last one.  For
-example, the second potential fix discussed in section
-\ref{sect:final_example} requires a critical section from instructions
-\verb|Y| to \verb|V|.  The CFG obtained in this case will contain
-nodes for \verb|Y|, \verb|Z|, and \verb|V|, linearly in that order,
-followed by a stub node which branches back \verb|W| in the original
-program.  It is then straightforward to place a lock-acquire
-instruction immediately before the first node in the CFG and a
-lock-release one immediately before every stub node, which guarantees
-that the lock will be released precisely once for every time which it
-is acquired.  The CFG can then be recompiled into a fragment of
-position-independent machine code which is combined with a stub loader
-and built into an ELF shared library.  This can be loaded into the
-target program using \verb|LD_PRELOAD| (or an equivalent mechanism).
-The stub loader is then responsible for actually applying the patch to
-the program, either by patching a jump into the entrypoint instruction
-or using the processor's debug facilities.
+stack to their most recent common stack frame.  Once we have obtained
+start and end points in the same function, we again examine the
+program's control flow graph, starting at the first instruction in the
+critical section.  This time, however, we do not break cycles, or make
+any unsafe approximations, so that the CFG precisely captures the
+program's behavior over the instructions where it is valid; indirect
+branches are replaced with special stub nodes which branch back to the
+original program text.  The CFG thus obtained is trimmed to only
+contain paths starting at the first instruction in the critical
+section and ending at the last one.  For example, the second potential
+fix discussed in section \ref{sect:final_example} requires a critical
+section from instructions \verb|Y| to \verb|V|.  The CFG obtained in
+this case will contain nodes for \verb|Y|, \verb|Z|, and \verb|V|,
+linearly in that order, followed by a stub node which branches back
+\verb|W| in the original program.  It is then straightforward to place
+a lock-acquire instruction immediately before the first node in the
+CFG and a lock-release one immediately before every stub node, which
+guarantees that the lock will be released precisely once for every
+time which it is acquired (assuming that the patched program does not,
+for instance, \verb|longjmp| out of a function called from the patch,
+which we do not correctly handle).  The CFG can then be recompiled
+into a fragment of position-independent machine code and combined with
+a stub loader to form an ELF shared library which can be loaded into
+the target program using \verb|LD_PRELOAD| (or an equivalent
+mechanism).  The stub loader will then apply the patch to the program,
+either by the directly modifying entrypoint instruction to jump
+directly to the patch or by setting a breakpoint on the entrypoint and
+transferring control to the patch from the breakpoint handler.
 
 \section{Semantic knowledge}
 \label{sect:semanticknowledge}
