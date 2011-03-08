@@ -2,5 +2,5 @@ set terminal postscript eps enhanced
 set output "output/clog.eps"
 
 set size 0.5,0.5
-set key 39,0.67
+#set key 39,0.67
 plot 'output/build_cms.dat' title "Building state machines" with yerrorlines, 'output/gen_fixes.dat' with yerrorlines title "Generating fixes", 'output/totals.dat' with yerrorlines title "Total"
