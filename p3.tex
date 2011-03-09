@@ -256,7 +256,7 @@ to illustrate some of the details of our approach.  The example shows
 a buggy instance of the common structure privatization pattern in an
 x86-like assembly language.  Thread 2 initializes (\verb|V|) and
 publishes (\verb|W|) a structure, does some unrelated work, and then
-attempts to privatize (\verb|X|) and de-initialise (\verb|Y|) the
+attempts to privatize (\verb|Y|) and de-initialise (\verb|X|) the
 structure.  Meanwhile, thread 1 loads the pointer published by thread
 2 (\verb|A|), checks whether it is valid (\verb|B|, \verb|C| and
 \verb|D|), and, if it is not, loads a fallback version (\verb|E|),
@@ -618,6 +618,7 @@ remaining stores.\editorial{The actual mechanism I use for doing this
   implementation); need to make it be identical and re-run the
   evaluation.}
 
+\section{Producing a fix}
 We now have, for each specialised state machine:
 
 \begin{itemize}
@@ -653,20 +654,25 @@ end point.  The set of loads can likewise be moved to be within a
 single function by assigning loads which are issued by called
 functions to the call instruction.
 
-These instruction sets are now converted into code patches.  Each code
-patch consists of a fragment of the original program, modified such
-that patches always run atomically with respect to other patches.
-There will be at most one such patch for every set derived above.
+These synchronisation regions are now converted into code patches.
+Each code patch consists of a fragment of the original program,
+modified such that patches always run atomically with respect to other
+patches.  There will be at most one such patch for every
+synchronisation region derived above.
 
 The first stage of building a patch is to determine which instructions
-should be in it.  We start by picking an arbitrary set and building a
-control flow graph starting with the instructions in it and
-terminating at any return instruction.  We trim this control flow
-graph to remove any instruction which definitely cannot reach any
-instruction in the set.  If the remaining instructions contain any
-instructions which are also present in some other set then we merge
-all of the sets and try again; otherwise, the instructions in the
-patch will be precisely those in the control flow graph.
+should be in it.  The procedure for doing so is similar but not quite
+identical for each of the types of region.  For simple store
+instructions, it is easy: the patch contains just the store
+instruction in question.  For unsafe regions, we start by building a
+control flow graph starting at the start of the region and terminating
+at its end or at the end of the enclosing function and then remove any
+instructions which cannot reach the end point; any instructions which
+remain in the control flow graph will be represented in the patch.
+The approach for the load set is similar: we build a control flow
+graph starting from every load in the load set and terminating at the
+end of the function, and then remove any instruction which cannot
+reach a load in the load set.
 
 The patch can now be constructed by duplicating all of the
 instructions which are contained in it, being careful to update any
@@ -684,6 +690,16 @@ in this way, the resulting code can be compiled into an ELF shared
 library which can be loaded into the target program using
 \verb|LD_PRELOAD| (or an equivalent mechanism) and which will apply
 the generated fix.
+
+Sometimes code patches can overlap.  A moderate amount of care is
+required to ensure that the resulting composite fix behaves correctly,
+but this is not conceptually difficult provided that the lock is
+recursively acquirable; see below for details.  SLI applies some very
+simple optimisations to avoid some obviously unfortunate edge cases
+(for instance, if one patch is a subset of another then it can be
+safely eliminated), but these are neither necessary for correctness
+nor particularly interesting, and we do not discuss them in detail
+here.
 
 Modifying acquiring instructions to branch to the new code is
 sometimes difficult, as the instruction to be patched might be too
@@ -729,98 +745,125 @@ This simple heuristic has worked well in our experience to date
 of possible fixes, all of which are correct and none of which would
 obviously lead to pathological performance.
 
-\subsection{Example}\editorial{This needs rewriting.}
+\subsection{Example}
 \label{sect:final_example}
 
 Our earlier example derived the state machine shown in figure
 \ref{fig:state_machines:a} for the program shown in figure
-\ref{fig:broken_privatize}.  The list of relevant addresses for this
-state machine will be \verb|global1|, \verb|fallback| and
-\verb|variable1|.  Note that the load in instruction \verb|J| is
-\emph{not} represented in this list: the value which it loads does not
-affect whether or not the program crashes, and so it is not considered
-relevant for these purposes.
+\ref{fig:broken_privatize}.  The only register referenced in the
+machine is \verb|rsp|, and so specialisation will then simply amount
+to substituting in constant values for that register.  Assume that
+only one place in the log is considered to be similar to the point for
+which the machine was derived, and in that in that case \verb|rsp| was
+\verb|8A5648|.  In that case, the only specialisation of the machine
+will be as shown in figure~\ref{fig:specialised_example_machine}.  The
+only locations accessed when evaluating this machine will be
+\verb|global1|, \verb|fallback|, and \verb|variable1|.  None of these
+are dynamically allocated, and so the machine is valid throughout the
+log.  The possibly-conflicting stores list will then consist of every
+dynamic instance of instructions \verb|V|, \verb|W|, \verb|X|, and
+\verb|Y|.
 
-\begin{table}
-\begin{tabular}{ll}
- Store & Specialization predicts \\
-       & crash before instruction \\
-\verb|V.1 &struct1 -> variable1| & Yes\\
-\verb|W.1 &variable1 -> global1| & No\\
-\verb|X.1 0 -> global1| & No\\
-\verb|Y.1 0 -> variable1| & No\\
-\verb|V.2 &struct1 -> variable1| & Yes\\
-\verb|W.2 &variable1 -> global1| & No\\
-\verb|X.2 0 -> global1| & No\\
-\verb|Y.2 0 -> variable1| & No\\
-...
-\end{tabular}
-\caption{Relevant store log for example}
-\label{tab:relevant_stores}
-\end{table}
+\begin{figure*}[thb]
+\includegraphics[scale=0.35]{diagrams/specialise_3.pdf}
+\caption{Results of specialising figure~\ref{fig:state_machines:a}}
+\label{fig:specialised_example_machine}
+\end{figure*}.
 
-Assuming that the only stores to relevant addresses are those shown in
-figure \ref{fig:broken_privatize}, the relevant store log will then be
-as shown in table \ref{tab:relevant_stores}.  The state machine does
-not depend on registers or the thread-local stack, and so
-specialization will have no effect, and we proceed directly to
-classifying the store log into crashing and non-crashing components.
-In this particular case, the state machine will predict that no state
-can crash, which is correct: if the loads in the state machine had
-executed atomically, with respect to the stores present in the store
-log, the program would not have crashed.  This suggests a potential
-fix with five critical sections: one covering instructions \verb|A| to
-\verb|G| in thread 1, and a single-instruction critical section for
-each of instructions \verb|V|, \verb|W|, \verb|X|, and \verb|Y| in
-thread 2.  This would fix the bug, and will be suggested by
-SLI.\editorial{Not a minimal fix...}
+We now move on to identifying the unsafe regions in the log.  This
+requires us to evaluate the state machine before and after every
+possibly-conflicting store.  In this case, this will always evaluate
+to \verb|no-crash|, which is correct: if the reader were executed
+atomically, it would never crash, regardless of what state the writer
+was in.  There are therefore no unsafe regions, and the instruction
+sets to be protected are simply:
+
+\begin{itemize}
+\item All of the loads issued by thread 1 which are mentioned in the
+  state machine.  In this case, there are only two; \verb|A| and
+  \verb|G|.
+\item A singleton set containing \verb|V|.
+\item A singleton set containing \verb|W|.
+\item A singleton set containing \verb|X|.
+\item A singleton set containing \verb|Y|.
+\end{itemize}
+
+We must now construct the code patches for these sets.  In this case,
+none of the sets' control flow graphs will overlap, and so there will
+be one patch for each set.  For the singleton sets, the patch will
+contain a lock operation, the instruction in the set, an unlock
+operation and a branch back to the original code.  For the larger set,
+the patch will contain the lock and unlock operations, the
+instructions from \verb|A| to \verb|G|, and a branch back to
+instruction \verb|H| in the original code.  Note several important
+properties of this patch:
+
+\begin{itemize}
+\item When the branch instruction at \verb|D| is duplicated, it is
+  rewritten such that both the taken and untaken exits point into the
+  new patch, rather than into the original code.
+\item The instruction which crashed, \verb|J|, is not included in the
+  critical region.  By the time instruction \verb|J| executes, the
+  race has already happened, and so it is too late to try to prevent
+  it and protecting that instruction would not be helpful.
+\item If the program enters the code shown in
+  figure~\ref{fig:broken_privatize}'s thread 1 anywhere other than
+  instruction \verb|A| it will not be affected by the patch.  In
+  particular, there is no danger of the lock being released without
+  first being acquired.  However, the program will not be protected
+  against any possible races.
+\item The fix is correct: it completely eliminates the observed bug.
+\end{itemize}
 
 This is not the only fix which will be suggested, however.  State
 machine generation will also have produced machines for other
-instructions in the crashing thread.  In particular, the machine
-produced for instruction \verb|F| will be:
+instructions in the crashing thread.  Consider, in particular, the
+state machine shown in figure~\ref{fig:state_machines:f}.  As this
+accesses both registers and the stack, it can be specialized.  Assume
+now that the DRS log contains at least one instance of the read
+operation in which the branch at \verb|D| is taken and one in which it
+is not.  In that case, there will be two specialisations, shown in
+figure~\ref{fig:example_specialisations}, one corresponding to the
+branch-taken case and one to the branch-not-taken one.
 
-\begin{verbatim}
-if BadAddr (load(load(rsp@F)@G)+48)
- then crash
- else no-crash
-\end{verbatim}
+\begin{figure*}[thb]
+\subfigure[Branch taken]{\includegraphics[scale=0.35]{diagrams/specialise_1.pdf}
+  \label{fig:specialise_taken}}
+\subfigure[Branch not taken]{\includegraphics[scale=0.35]{diagrams/specialise_2.pdf}
+  \label{fig:specialise_not_taken}}
+\caption{Results of specialising figure~\ref{fig:state_machines:f}}
+\label{fig:example_specialisations}
+\end{figure*}.
 
-\noindent
-As this accesses both registers and the stack, it can be specialized,
-producing two new machines:
-
-\begin{verbatim}
-if BadAddr (load(variable1@G)+48)
- then crash
- else no-crash
-\end{verbatim}
-
-and
-
-\begin{verbatim}
-if BadAddr (load(fallback@G)+48)
- then crash
- else no-crash
-\end{verbatim}
-
-\noindent
 The captured execution shows no writes to \verb|fallback|, and so the
-\verb|load| in the second machine is replaced with a constant and the
-entire machine is subject to constant folding, producing the trivial
-machine \verb|no-crash|.  It is therefore discarded.  The first
-machine, however, predicts a crash whenever \verb|variable1| contains
-something which is not a valid pointer, which occurs from \verb|Y.1|
-to \verb|V.2| in the store log (and subsequently as thread 2 loops).
-This suggests an alternative fix with two critical sections: one
-single-instruction critical section covering instruction \verb|G| in
-thread 1, and a second covering \verb|Y| to \verb|V| in thread 2 (the
-second section will wrap around the loop, which somewhat complicates
-the implementation of the binary patcher; see \S\ref{sect:binpatch}
-for our approach to this problem).  This fix will also be suggested by
-SLI, and would also fix the bug.  Furthermore, because it has fewer
-critical sections, it will be preferred by the prioritisation
-heuristic.
+\verb|load| in figure~\ref{fig:specialise_not_taken} is replaced with
+a constant and the entire machine is subject to constant folding,
+producing the trivial machine \verb|no-crash|.  It is therefore
+discarded.  The machine in figure~\ref{fig:specialise_taken}, however,
+produces another suggested fix.  In this case, the state machine
+evaluates to \verb|crash| whenever \verb|variable1| is zero
+i.e. whenever thread 2 is between instructions \verb|Y| and \verb|V|.
+SLI therefore produces alternative sets of instructions to protect:
+
+\begin{itemize}
+\item The load set will contain just the load at \verb|G|.
+\item There will be an unsafe region from \verb|Y| to \verb|V|. 
+\item There will be singleton store sets \verb|V| and \verb|Y|.  Our
+  prototype will recognise that these are redundant because they are
+  covered by the unsafe region and eliminate them before proceeding
+  any further.
+\end{itemize}
+
+The load set will be instantiated into a trivial single-instruction
+patch, as the store sets were in the previous example.  We also
+construct a patch for the code in figure~\ref{fig:broken_privatize}'s
+thread 2 which duplicates instructions \verb|Y|, \verb|Z|, and
+\verb|V|, plus all of the instructions between \verb|Y| and \verb|Z|,
+and which drops the lock and branches back to instruction \verb|W| at
+the end.  These patches would also fix the bug.  Furthermore, assuming
+that there are only a small number of instructions between \verb|Y|
+and \verb|Z|, they will be preferred by the prioritisation heuristic,
+because they require fewer critical sections.
 
 It could be argued, however, that this smaller fix is inferior to the
 larger alternative, despite completely eliminating the crash and
@@ -844,12 +887,123 @@ eliminates its symptoms, and the techniques used by SLI are much more
 applicable to the latter.  This will be true of any approach which
 does not rely on programmer annotations (ignoring trivial systems
 which just pattern-match the buggy code against a library of common
-bugs and their standard fixes).
+bugs and their standard fixes).\editorial{This could do with being a
+  bit earlier.}
 
-%; the extra flexibility gained by being applicable to arbitrary
-%binaries makes this a reasonable trade-off.
+\begin{figure}
+  \begin{subfloat}
+    \begin{minipage}{90mm}
+\begin{verbatim}
+V: acquire_and_jmp V'1
+W: mov &variable1 -> (global1)
+...
+X: mov $0 -> (global1)
+Y: acquire_and_jmp Y'1
+U: ...
+Z: jmp V
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \begin{subfloat}
+    \begin{minipage}{90mm}
+\begin{verbatim}
+V'1: mov &struct1 -> (variable1)
+V'2: release()
+V'3: jmp W
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \begin{subfloat}
+    \begin{minipage}{90mm}
+\begin{verbatim}
+Y'1:  mov $0 -> (variable1)
+Y'2:  release()
+Y'3:  jmp U
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \caption{Partial patch based on the state machine in figure~\ref{fig:specialise_taken}.}
+  \label{fig:patch1}
+\end{figure}
 
-\section{Evaluation}\editorial{This needs re-doing as well.}
+It is instructive to consider what would have happened if the
+redundant singleton sections had not been eliminated.  In that case,
+SLI would have constructed patches for each of the singleton sets, as
+shown in figure~\ref{fig:patch1}, before attempting to produce a patch
+for the unsafe region.  The new patch will therefore include
+duplicates of these previous patches
+
+\begin{figure}[h]
+  \begin{subfloat}
+    \begin{minipage}{90mm}
+\begin{verbatim}
+V: acquire_and_jmp V'1
+W: mov &variable1 -> (global1)
+...
+X: mov $0 -> (global1)
+Y: acquire_and_jmp Y''
+U: ...
+Z: jmp V
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \begin{subfloat}
+    \begin{minipage}{90mm}
+\begin{verbatim}
+V'1: mov &struct1 -> (variable1)
+V'2: release()
+V'3: jmp W
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \begin{subfloat}
+    \begin{minipage}{90mm}
+\begin{verbatim}
+Y'1:  mov $0 -> (variable1)
+Y'2:  release()
+Y'3:  jmp U
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \begin{subfloat}
+    \begin{minipage}{90mm}
+\begin{verbatim}
+Y'' : acquire_and_jmp Y'1'
+Y'1': mov $0 -> (variable1)
+Y'2': release()
+Y'3': jmp U''
+U'':  ...
+Z'':  jmp V''1
+V''1: jmp V'1
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \caption{Complete patch based on the state machine in
+    figure~\ref{fig:specialise_taken}, extending
+    figure~\ref{fig:patch1}.}
+  \label{fig:patch2}
+\end{figure}
+
+This requires some explanation.  The new critical region starts at
+instruction \verb|Y|, and so we rewrite \verb|Y| to be an
+acquire-and-branch instruction to a new patch.  \verb|Y| starts off as
+\verb|acquire_and_jmp Y'1|, and so the first instruction of the patch
+is a similar \verb|acquire_and_jmp| instruction modified to branch to
+a duplicate of \verb|Y'1|.  \verb|Y'1| is now duplicated to
+\verb|Y'1'|, and so are the following instructions.  We continue
+duplicating code following the control flow graph until we reach
+instruction \verb|V|.  This is the final instruction in the range to
+be protected, and so the new patch should issue that instruction,
+release the lock, and branch back to the original code.  In this case,
+the instruction to be issued is itself an \verb|acquire_and_jmp|, and
+so SLI optimises slightly by rewriting it to a simple \verb|jmp V'1|.
+
+This illustrates that the binary patching algorithm will perform
+correctly even in the presence of overlapping critical sections,
+although it may in some cases produce non-optimal synchronisation
+patterns.
+
+\section{Evaluation}\editorial{This needs re-doing.}
 \label{sect:evaluation}
 
 \begin{table*}

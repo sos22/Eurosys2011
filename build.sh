@@ -18,6 +18,9 @@ dia2pdf() {
 	epstopdf ${1}.eps
 }
 dia2pdf eg_cfg_start
+dia2pdf specialise_1
+dia2pdf specialise_2
+dia2pdf specialise_3
 for x in A B C D E F G H J
 do
 	dia2pdf statement$x
