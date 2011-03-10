@@ -13,8 +13,18 @@ epstopdf r4.eps
 cd ..
 
 cd diagrams
-dia -l -e eg_cfg_start.eps eg_cfg_start.dia
-epstopdf eg_cfg_start.eps
+dia2pdf() {
+	dia -l -e ${1}.eps ${1}.dia
+	epstopdf ${1}.eps
+}
+dia2pdf eg_cfg_start
+dia2pdf specialise_1
+dia2pdf specialise_2
+dia2pdf specialise_3
+for x in A B C D E F G H J
+do
+	dia2pdf statement$x
+done
 cd ..
 
 cd clog
