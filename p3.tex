@@ -229,23 +229,23 @@ Z: jmp V
 \end{figure*}
 
 \begin{figure*}[t]
-\subfigure[Instruction A]{\includegraphics[scale=0.35]{diagrams/statementA.pdf}
+\subfigure[Instruction A]{\includegraphics[scale=0.3]{diagrams/statementA.pdf}
   \label{fig:state_machines:a}}
-\subfigure[Instruction B]{\includegraphics[scale=0.35]{diagrams/statementB.pdf}
+\subfigure[Instruction B]{\includegraphics[scale=0.3]{diagrams/statementB.pdf}
   \label{fig:state_machines:b}}
-\subfigure[Instruction C]{\includegraphics[scale=0.35]{diagrams/statementC.pdf}
+\subfigure[Instruction C]{\includegraphics[scale=0.3]{diagrams/statementC.pdf}
   \label{fig:state_machines:c}}
-\subfigure[Instruction D]{\includegraphics[scale=0.35]{diagrams/statementD.pdf}
+\subfigure[Instruction D]{\includegraphics[scale=0.3]{diagrams/statementD.pdf}
   \label{fig:state_machines:d}}
-\subfigure[Instruction E]{\includegraphics[scale=0.35]{diagrams/statementE.pdf}
+\subfigure[Instruction E]{\includegraphics[scale=0.3]{diagrams/statementE.pdf}
   \label{fig:state_machines:e}}
-\subfigure[Instruction F]{\includegraphics[scale=0.35]{diagrams/statementF.pdf}
+\subfigure[Instruction F]{\includegraphics[scale=0.3]{diagrams/statementF.pdf}
   \label{fig:state_machines:f}}
-\subfigure[Instruction G]{\includegraphics[scale=0.35]{diagrams/statementG.pdf}
+\subfigure[Instruction G]{\includegraphics[scale=0.3]{diagrams/statementG.pdf}
   \label{fig:state_machines:g}}
-\subfigure[Instruction H]{\includegraphics[scale=0.35]{diagrams/statementH.pdf}
+\subfigure[Instruction H]{\includegraphics[scale=0.3]{diagrams/statementH.pdf}
   \label{fig:state_machines:h}}
-\subfigure[Instruction J]{\includegraphics[scale=0.35]{diagrams/statementJ.pdf}
+\subfigure[Instruction J]{\includegraphics[scale=0.3]{diagrams/statementJ.pdf}
   \label{fig:state_machines:j}}
 \caption{State machines produced for the example program}
 \label{fig:state_machines}
@@ -495,8 +495,6 @@ broken in the usual way, and so this is sufficient to ensure that any
 static instruction issues at most one dynamic load and hence that load
 labels refer to at most one load.
 
-\editorial{Maybe explain what happens in the SHA1 example here?}
-
 \section{Identifying relevant structures}
 
 Once the abstract read operation has been suitably characterised, the
@@ -540,21 +538,22 @@ any detail.
 Dynamically allocated memory complicates this simple procedure.  The
 specialisations, as described, in effect assume that memory locations
 which are shared between threads have a form of type-stability in the
-region of interest.  We mitigate\editorial{\emph{Should} mitigate; at
-  the moment I completely ignore it.  That doesn't make any difference
-  for any of my current tests, but would do for more realistic ones.}
-this by limiting the range over which the specialised state machines
-are applicable.  Newly-created specialised state machines are
-evaluated at the point in the log at which they are constructed, and a
-record kept of the memory locations which they access.  If any of
-these locations were obtained through a known dynamic allocator then
-the machine is restricted so that it is only used between the point at
-which that memory was last allocated and the point at which it is
-released (and if multiple locations are dynamically allocated then
-their ranges of validity are intersected).  This effectively weakens
-the type-stability assumption, from assuming that a particular memory
-location always has a particular type to assuming that it can only be
-re-typed after being released and re-allocated.
+region of interest.  We mitigate this by limiting the range over which
+the specialised state machines are applicable.  Newly-created
+specialised state machines are evaluated at the point in the log at
+which they are constructed, and a record kept of the memory locations
+which they access.  If any of these locations were obtained through a
+known dynamic allocator then the machine is restricted so that it is
+only used between the point at which that memory was last allocated
+and the point at which it is released (and if multiple locations are
+dynamically allocated then their ranges of validity are intersected).
+This effectively weakens the type-stability assumption, from assuming
+that a particular memory location always has a particular type to
+assuming that it can only be re-typed after being released and
+re-allocated.\editorial{This isn't right: after specialisation, we
+  could still refer to pointers in the heap, and we won't track
+  validity of the referenced objects.  Probably doesn't matter in
+  practice.}
 
 We still assume that the read operation can be applied at any point
 where the memory structure has the correct type, and ignore any
@@ -608,10 +607,7 @@ instructions in the storing thread to be synchronised to not run in
 parallel with the read operation.  Otherwise, the update operation
 spans several threads, and SLI is unable to generate a fix.  In that
 case, we simply ignore the crashing region and synchronise against any
-remaining stores.\editorial{The actual mechanism I use for doing this
-  is similar to but not identical to this (because I screwed up the
-  implementation); need to make it be identical and re-run the
-  evaluation.}
+remaining stores.
 
 \section{Producing a fix}
 We now have, for each specialised state machine:
@@ -1001,12 +997,35 @@ patterns.
 \section{Evaluation}\editorial{This needs re-doing.}
 \label{sect:evaluation}
 
+New eval plan:
+
+\begin{itemize}
+\item More emphasis on the fact that the time is dominated by the
+  replay engine, and that if you ignore that the real bug is actually
+  the fastest to process.  Probably means recollecting a bunch of
+  numbers so that I can actually prove that.
+\end{itemize}\editorial{...}
+
+Why the various tests are important:
+
+\begin{itemize}
+\item toctou -- simplest possible bug
+\item twovar -- Kivati couldn't do it
+\item publish -- bug is in a thread other than the one which crashed.
+  Also illustrates a bit of the recombination stuff, but I think I
+  want to de-emphasise that.
+\item privatize -- the running example
+\item glibc -- bug not visible at source-code level, but only after
+  compiler optimisations.
+\item thunderbird -- an actual honest-to-goodness bug.
+\end{itemize}\editorial{...}
+
 \begin{table*}
 \begin{tabular}{lllllll}
-Name of test & Nature & Number & Time taken & Size of & Number of & Total number of state\\
- & & of fixes & (seconds) & logfile & state machines & machine states\\
-\hline
-toctou & Synthetic TOCTOU & 1 & $1.18 \pm 0.02$ & 28MiB & 8 & 20\\
+Name of test & Nature & Number & Time taken & Size of & Number of &
+Total number of state\\ & & of fixes & (seconds) & logfile & state
+machines & machine states\\ \hline toctou & Synthetic TOCTOU & 1 &
+$1.18 \pm 0.02$ & 28MiB & 8 & 20\\
 %       & TOCTOU & & & \\
 twovar & Synthetic two-variable & 2 & $1.89 \pm 0.03$ & 31MiB & 8 & 22\\
        & atomicity violation &&&\\
@@ -1063,9 +1082,11 @@ are not relevant to the observed crash quickly, so should be able to
 scale up to more complicated bugs in a reasonably straightforward
 way\editorial{Not sure I believe that}.  Second, for the very
 long-running \verb|thunderbird| test the running time is completely
-dominated by the phases which involve replaying the log.  This
-suggests that improvements to our replay engine would yield
-significant performance gains.
+dominated by the phases which involve replaying the log; if this time
+is excluded then the \verb|thunderbird| bug is in fact the fastest.
+This suggests that while the greater duration and complexity of the
+test case does slow down the replay process, it does not pose any
+problems for the analysis components of SLI.
 
 Figure \ref{fig:timesignoringreplay} shows how much time is taken by
 the various phases ignoring the time taken to replay the log file.
@@ -1077,7 +1098,7 @@ less than ten seconds).  This is because the artificial test cases run
 the buggy code in a tight loop, so the log contains many instances of
 the buggy code and many stores to the relevant addresses, whereas
 \verb|thunderbird| runs it only once.  The state machines must
-therefore by evaluated in far more contexts in the artificial bugs,
+therefore by specialised in far more contexts in the artificial bugs,
 which dramatically increases the time taken by the analysis.  This is
 an encouraging result: most bugs occur in code which is executed
 infrequently, and so it would be reasonable to expect that most bugs
@@ -1115,7 +1136,7 @@ time taken.  None of our tests depend on more than three levels of
 backtracking to produce a correct fix (and the \verb|thunderbird| test
 requires just one), and so this suggests that SLI should be able to
 backtrack sufficiently to solve most bugs without requiring excessive
-resources.
+resources.\editorial{Meh.}
 
 \begin{figure}
 \includegraphics{clog/clog.pdf}
@@ -1154,7 +1175,7 @@ l2: cmp %rax, (global2)
     jne __assert_fail
 \end{verbatim}
 
-The single-threaded state machine for \verb|l1| is
+The state machine for \verb|l1| is
 
 \begin{verbatim}
 if load(global1@l1) != load(global2@l2)
@@ -1167,47 +1188,8 @@ This produces a single candidate fix, consisting of two critical
 sections: one protecting instructions \verb|l1| and \verb|l2| in the
 second thread, and four single-instruction sections each of which
 protects a single store in the other thread.  This correctly
-eliminates the bug.
-
-\verb|l2| is more interesting.  The state machine generated is
-
-\begin{verbatim}
-if rax != load(global2@l2)
- then crash
- else no-crash
-\end{verbatim}
-
-\noindent
-This will specialize in two ways:
-
-\begin{verbatim}
-if 5 != load(global2@l2)
- then crash
- else no-crash
-\end{verbatim}
-
-\noindent{}and
-
-\begin{verbatim}
-if 7 != load(global2@l2)
- then crash
- else no-crash
-\end{verbatim}
-
-\noindent
-There are no points in the program's execution at which both machines
-will predict \verb|no-crash|, and so the original unspecialized
-machine is discarded and produces no suggested fixes.  If the
-specialized predictions had not been recombined they would have
-predicted that the relevant instruction is safe if \verb|global2| is,
-respectively, \verb|5| or \verb|7|, and hence produced suggested fixes
-which synchronized the load at \verb|l2| against the stores to
-\verb|global2| independently of any accesses to \verb|global1|.
-Neither of these fixes would be sufficient to fix the bug, and
-combining them directly would have meant that \verb|l2| could only
-occur if \verb|global2| was both \verb|5| and \verb|7| simultaneously.
-This is impossible, and so \verb|l2| would never be able to run at all
-and the program would have deadlocked.
+eliminates the bug.  Note that, as this bug involves two variables, it
+would not be eliminated by Kivati\cite{Chew2010a}.
 
 \verb|publish| is a buggy implementation of the publish pattern.  In
 this pattern, a structure is initialized by one thread and then
@@ -1220,7 +1202,9 @@ thread eventually crashing.  The test case consists of two threads,
 one of which repeatedly publishes and un-publishes a structure and the
 other of which repeatedly tests whether it has been published and, if
 it has, attempts to use it in a way which leads to an immediate crash
-if initialization is not complete.
+if initialization is not complete.  Note that in this case the bug is
+in the publishing thread, but the crash is observed in the consuming
+one.
 
 Our tool produced two suggested fixes in this case.  One of these was
 expected, consisting of two critical sections, one protecting the
@@ -1230,7 +1214,7 @@ producing thread from the point at which it published the structure to
 the point at which it finished initializing it.  This is a correct
 fix.
 
-The other suggestion was an artifact of our test harness, which
+The other suggestion was somewhat surprising.  Our test harness
 repeatedly published, initialized, unpublished, and then deinitialized
 the same structure.  SLI was able to look through this pattern, and
 determined that it was sufficient to prevent the consuming thread from
@@ -1243,8 +1227,11 @@ deinitialization to the subsequent initialization in another,
 completely ignoring the accesses related to publishing and
 un-publishing the structure.  While somewhat surprising, this is also
 a correct fix, completely preventing the observed bug, and, as it
-produces slightly smaller critical sections, would be preferred by the
-fix prioritization heuristic.
+produces slightly smaller critical sections, might preserve a greater
+degree of concurrency than the more obvious one.  In this case, SLI
+has produced a fix which is actually better than might be expected of
+a purely manual process, precisely because it operates at a very low
+level without any reference to the program's intended semantics.
 
 \verb|privatize| is the converse of \verb|publish|: a thread is
 attempting to make a structure private, and does it incorrectly.  It
@@ -1381,8 +1368,11 @@ important differences between their approach and ours:
   ``fix'' perfectly benign races.  It also means that the fixes cannot
   easily be applied without also requiring the Kivati runtime,
   whereas, once generated, SLI fixes can stand alone without any of
-  the rest of the SLI infrastructure.\editorial{A bit unfair on
-    Kivati, really.}
+  the rest of the SLI infrastructure.  In other words, while SLI's
+  overheads are higher (due to the use of a DRS), they are only paid
+  once, until the bug is reproduced, whereas Kivati's are paid until a
+  programmer can generate a long-term fix, which may be significantly
+  later.
 \item Kivati requires access to the program's source code during the
   initial static analysis phase, whereas SLI requires only the binary.
 \item SLI can be applied to a wider class of bugs than Kivati, such as
@@ -1414,8 +1404,18 @@ approach is that it requires non-standard (and presently non-existent)
 hardware, which makes it less practically useful than it otherwise
 would be.
 
-Dimmunix\needCite{} is similar, but fixes deadlocks rather than
-races.\editorial{Expand.}
+Dimmunix\cite{Jula2008} solves the closely-related problem of
+preventing deadlocks in code which uses mutex-like synchronisation.
+It relies, as SLI does, on having observed the bug at least once, and
+then synthesises additional synchronisation which prevents it from
+re-occurring.  The most important difference is that whereas Dimmunix
+need only be concerned with lock operations, which are relatively
+rare, SLI must consider memory accesses, which are extremely common,
+and this requires the use of somewhat different techniques.
+Gadara\cite{Wang2008} also attempts to solve deadlock bugs using a
+completely different offline analysis to detect bugs before they
+happen, but requires access to the program's source code, which may
+not always be available.
 
 There have also been a number of attempts to automatically fix heap
 management bugs, such as buffer overflows and use-after-free errors,
