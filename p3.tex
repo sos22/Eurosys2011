@@ -101,7 +101,7 @@ binary whose behavior is identical to that of the original except that
 it no longer suffers from the bug.  Furthermore, the fixes will
 usually have very low performance overhead, and the process of
 generating the fix itself takes only a moderate amount of time
-(ranging from seconds in simple cases to a few hours in more
+(ranging from seconds in simple cases to a few minutes in more
 complicated ones).  SLI does not depend on programmer annotations or
 semantic knowledge of the program's intended behavior; it does
 however, depend on having observed the bug, and on having captured it
@@ -997,113 +997,77 @@ patterns.
 \section{Evaluation}\editorial{This needs re-doing.}
 \label{sect:evaluation}
 
-New eval plan:
+What am I trying to show here:
 
 \begin{itemize}
-\item More emphasis on the fact that the time is dominated by the
-  replay engine, and that if you ignore that the real bug is actually
-  the fastest to process.  Probably means recollecting a bunch of
-  numbers so that I can actually prove that.
-\end{itemize}\editorial{...}
-
-Why the various tests are important:
-
-\begin{itemize}
-\item toctou -- simplest possible bug
-\item twovar -- Kivati couldn't do it
-\item publish -- bug is in a thread other than the one which crashed.
-  Also illustrates a bit of the recombination stuff, but I think I
-  want to de-emphasise that.
-\item privatize -- the running example
-\item glibc -- bug not visible at source-code level, but only after
-  compiler optimisations.
-\item thunderbird -- an actual honest-to-goodness bug.
-\end{itemize}\editorial{...}
+\item The state machines don't get too big.
+\item The time taken is tolerable, and dominated by the replay engine.
+\item Give readers a better idea of the types of bugs handled
+  and the types of fixes generated.
+\end{itemize}
 
 \begin{table*}
 \begin{tabular}{lllllll}
-Name of test & Nature & Number & Time taken & Size of & Number of &
-Total number of state\\ & & of fixes & (seconds) & logfile & state
-machines & machine states\\ \hline toctou & Synthetic TOCTOU & 1 &
-$1.18 \pm 0.02$ & 28MiB & 8 & 20\\
-%       & TOCTOU & & & \\
-twovar & Synthetic two-variable & 2 & $1.89 \pm 0.03$ & 31MiB & 8 & 22\\
-       & atomicity violation &&&\\
-publish & Synthetic broken & 2 & $1.15 \pm 0.02$ & 31MiB & 5 & 16 \\
-        & publish pattern & & & \\
-privatize & Synthetic broken & 2 & $5.11 \pm 0.05$ & 43MiB & 5 & 16 \\
-          & privatize pattern & & & \\
+Name of test & Nature                 & Number   & Size of & Number of      & Total number of state\\
+             &                        & of fixes & logfile & state machines & machine states\\ \hline
+toctou       & Synthetic TOCTOU       & 1        & 28MiB   & 9 & 19\\
+twovar       & Synthetic two-variable & 1        & 31MiB   & 13 & 31\\
+             & atomicity violation    &          & \\
+publish      & Synthetic broken       & 2        & 31MiB   & 8 & 24 \\
+             & publish pattern        &          & \\
+privatize    & Synthetic broken       & 2        & 43MiB   & 9 & 25 \\
+             & privatize pattern      &          & \\
 \hline
-glibc & Kernel of a genuine & 6 & $8.15 \pm 0.03$ & 48MiB & 10 & 52\\
-      & atomicity violation & & & \\
+glibc        & Kernel of a genuine    & 8        & 48MiB   & 19 & 139\\
+             & atomicity violation    &          & \\
 \hline
-thunderbird & Genuine TOCTOU & 1 & $4740 \pm 6$ & 758MiB & 6 & 14
+thunderbird  & Genuine TOCTOU         & 1        & 758MiB  & 7 & 15
 \end{tabular}
-\caption{Summary of results obtained from running the fix generating
-  tool on a single log file collected from each bug.  The ``Time taken''
-  column gives the mean and standard deviation from five runs.}
+\caption{Summary of the results for each test case.}
+\label{tab:output_summary}
+\end{table*}
+
+\begin{table*}
+\begin{tabular}{lllll}
+Name of test & Total            & Loading memory image & Replay engine    & Analysis\\ \hline
+toctou       & $ 0.51 \pm 0.01$ & $ 0.18 \pm 0.01$     & $ 0.19 \pm 0.00$ & $ 0.15 \pm 0.00$\\
+twovar       & $ 0.75 \pm 0.01$ & $ 0.18 \pm 0.01$     & $ 0.42 \pm 0.00$ & $ 0.14 \pm 0.00$\\
+publish      & $ 0.48 \pm 0.03$ & $ 0.18 \pm 0.02$     & $ 0.17 \pm 0.00$ & $ 0.13 \pm 0.00$\\
+privatize    & $ 2.34 \pm 0.78$ & $ 0.18 \pm 0.02$     & $ 1.04 \pm 0.01$ & $ 1.12 \pm 0.75$\\
+\hline
+glibc        & $ 2.46 \pm 0.06$ & $ 0.19 \pm 0.01$     & $ 1.20 \pm 0.05$ & $ 1.07 \pm 0.02$\\
+\hline
+thunderbird  & $ 356  \pm 1$    & $ 1.76 \pm 0.02$     & $ 354  \pm 1$    & $ 0.58 \pm 0.01$\\
+\end{tabular}
+\caption{Time taken for the various phases of operation, in seconds.
+  Mean and standard deviation of analysing a single reproduction five
+  times.}
 \label{tab:perf_summary}
 \end{table*}
 
-As shown in table \ref{tab:perf_summary}, our prototype implementation
-is able to fix a reasonable selection of artificial bugs within a few
-seconds, given only the program binary and a log which shows the bug
-reproducing, and is able to fix at least one real-world bug within an
-hour and a half.  The data also shows that the prototype avoids state
-machine explosion, generating only a small number of distinct state
-machines each of which has only a small number of states (a little
-over three on average, and in no case more than fourteen).  All
-experiments were conducted on an Intel Q6600 with 8GiB of RAM running
-64-bit Linux 2.6.28.
+As shown in tables \ref{tab:output_summary} and
+\ref{tab:perf_summary}, our prototype implementation is able to fix a
+reasonable selection of artificial bugs within a few seconds, given
+only the program binary and a log which shows the bug reproducing, and
+is able to fix at least one real-world bug in a little over five
+minutes.  The data also shows that the prototype avoids state machine
+explosion, generating only a small number of distinct state machines
+each of which has only a small number of states (a little under four
+on average, and in no case more than twenty-three).  All experiments
+were conducted on an Intel Q6600 with 8GiB of RAM running 64-bit Linux
+2.6.28.
 
-\begin{figure*}
-\subfigure[Length of the phases, as fractions of the entire
-  fix-generating process.]{ \includegraphics[trim=8mm 0 20mm
-    0]{timing/timings.pdf}
-  \label{fig:phasedistribution}
-}\hspace{10mm} \subfigure[Absolute length of the phases, ignoring time
-  spent in the replay engine.]{ \includegraphics[trim=8mm 0 10mm
-    0]{timing/without_replay.pdf}
-  \label{fig:timesignoringreplay}
-}
-\caption{Breakdown of time spent in various phases of the analysis
-  process.  Results presented are mean and standard deviation of five
-  runs of the fix-generating program applied to a single log file for
-  each bug.}
-\end{figure*}
-
-Figure \ref{fig:phasedistribution} shows how the time taken is
-distributed between the phases of the fix generation process.  Two
-main conclusions can be drawn from the figure.  First, constructing
-the state machines is very quick for all of these tests, and is barely
-visible in the graph.  This is reassuring, and suggests that the
-algorithm is able to discard parts of the program's execution which
-are not relevant to the observed crash quickly, so should be able to
-scale up to more complicated bugs in a reasonably straightforward
-way\editorial{Not sure I believe that}.  Second, for the very
-long-running \verb|thunderbird| test the running time is completely
-dominated by the phases which involve replaying the log; if this time
-is excluded then the \verb|thunderbird| bug is in fact the fastest.
-This suggests that while the greater duration and complexity of the
-test case does slow down the replay process, it does not pose any
-problems for the analysis components of SLI.
-
-Figure \ref{fig:timesignoringreplay} shows how much time is taken by
-the various phases ignoring the time taken to replay the log file.
-One interesting observation on this graph is that \verb|thunderbird|
-spends by far the least time generating fixes (0.2$\mu{}$s versus
-hundreds of milliseconds to a few seconds for the other tests),
-despite taking by far the most time overall (an hour and a half versus
-less than ten seconds).  This is because the artificial test cases run
-the buggy code in a tight loop, so the log contains many instances of
-the buggy code and many stores to the relevant addresses, whereas
-\verb|thunderbird| runs it only once.  The state machines must
-therefore by specialised in far more contexts in the artificial bugs,
-which dramatically increases the time taken by the analysis.  This is
-an encouraging result: most bugs occur in code which is executed
-infrequently, and so it would be reasonable to expect that most bugs
-would have analysis time more similar to the \verb|thunderbird| bug
-than to the artificial ones.
+One important observation here is that while the total time taken by
+the \verb|thunderbird| bug was much greater than for any of the other
+bugs, the bulk of this time was spent in the replay engine and the
+remainder in loading the larger memory image, with the time spent in
+the analysis phases largely unchanged.  This is encouraging.  One
+obvious criticism of this kind of approach is that it might suffer an
+equivalent of the model checking state explosion problem and hence
+collapse when faced with bugs in realistically-sized programs, and if
+that were happening then it would show up as an increase in the time
+spent in the analysis phases.  This has clearly not happened in this
+case.
 
 We also investigated how the analysis depends on the exact way in 
 which a particular bug is reproduced, by running our tool
@@ -1116,7 +1080,7 @@ logs to be parsed. Similar results were obtained for the other
 bugs.\editorial{Not sure this is all that interesting, or that I've
   phrased it very well...}
 
-\subsection{Effects of backtracking further}
+\subsection{Effects of backtracking further}\editorial{Need to re-run these experiments and plot new results.}
 \label{sect:eval:backtrack}
 
 One important parameter to the system is how far to backtrack through
