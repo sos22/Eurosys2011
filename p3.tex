@@ -751,11 +751,11 @@ log.  The possibly-conflicting stores list will then consist of every
 dynamic instance of instructions \verb|V|, \verb|W|, \verb|X|, and
 \verb|Y|.
 
-\begin{figure*}[thb]
-\includegraphics[scale=0.35]{diagrams/specialise_3.pdf}
+\begin{figure}[thb]
+\includegraphics[scale=0.3]{diagrams/specialise_3.pdf}
 \caption{Results of specialising figure~\ref{fig:state_machines:a}}
 \label{fig:specialised_example_machine}
-\end{figure*}.
+\end{figure}.
 
 We now move on to identifying the unsafe regions in the log.  This
 requires us to evaluate the state machine before and after every
@@ -990,17 +990,8 @@ correctly even in the presence of overlapping critical sections,
 although it may in some cases produce non-optimal synchronisation
 patterns.
 
-\section{Evaluation}\editorial{This needs re-doing.}
+\section{Evaluation}
 \label{sect:evaluation}
-
-What am I trying to show here:
-
-\begin{itemize}
-\item The state machines don't get too big.
-\item The time taken is tolerable, and dominated by the replay engine.
-\item Give readers a better idea of the types of bugs handled
-  and the types of fixes generated.
-\end{itemize}
 
 \begin{table*}
 \begin{tabular}{lllllll}
@@ -1076,7 +1067,7 @@ logs to be parsed. Similar results were obtained for the other
 bugs.\editorial{Not sure this is all that interesting, or that I've
   phrased it very well...}
 
-\subsection{Effects of backtracking further}\editorial{Need to re-run these experiments and plot new results.}
+\subsection{Effects of backtracking further}
 \label{sect:eval:backtrack}
 
 One important parameter to the system is how far to backtrack through
@@ -1087,22 +1078,19 @@ above tests we limited this backtracking to ten branches.  Figure
 \ref{fig:eval:backtrack} shows the effect of changing this parameter
 on the time taken by the non-replay components of the
 \verb|thunderbird| test (the replay components were unchanged).  It
-can be seen that the time taken increases rapidly as the distance
-which we backtrack increases, by a factor of more than 500 when going
-from a single level of backtracking to fifty levels.  However, the
-total time taken by the non-replay analysis is, even with a
-backtracking depth of 50, still just 620ms, or 0.013\% of the total
-time taken.  None of our tests depend on more than three levels of
-backtracking to produce a correct fix (and the \verb|thunderbird| test
-requires just one), and so this suggests that SLI should be able to
-backtrack sufficiently to solve most bugs without requiring excessive
-resources.\editorial{Meh.}
+can be seen that the time taken increases moderately as the distance
+which we backtrack increases, from $0.57$ seconds when backtracking
+three branches to $0.90$ seconds when backtracking fifty.  None of our
+tests depend on more than three levels of backtracking to produce a
+correct fix (and the \verb|thunderbird| test requires just one), and
+so this suggests that SLI should be able to backtrack sufficiently to
+solve most bugs without requiring excessive resources.\editorial{Meh.}
 
 \begin{figure}
 \includegraphics{clog/clog.pdf}
 \caption{Time taken by the analysis phases of the thunderbird bug, in
   seconds, versus the level of backtracking applied to the crashed
-  thread, in dynamic branches.  Mean and standard deviation of three
+  thread, in dynamic branches.  Mean and standard deviation of five
   runs.}
 \label{fig:eval:backtrack}
 \end{figure}

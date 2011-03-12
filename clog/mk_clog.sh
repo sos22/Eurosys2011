@@ -2,8 +2,12 @@
 
 set -e
 
-rm -rf output
-rm -f clog.pdf
+rm -f clog.pdf clog.eps
+
+gnuplot ./clog.gpl
+epstopdf clog.eps --outfile clog.pdf
+
+exit 0
 
 mkdir output
 
@@ -31,7 +35,4 @@ do
 	echo "$depth $mean $sd" >> output/${field}.dat
     done
 done
-
-gnuplot ./clog.gpl
-epstopdf output/clog.eps --outfile clog.pdf
 
