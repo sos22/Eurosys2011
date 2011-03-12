@@ -1318,16 +1318,18 @@ important differences between their approach and ours:
   whereas, once generated, SLI fixes can stand alone without any of
   the rest of the SLI infrastructure.  In other words, while SLI's
   overheads are higher (due to the use of a DRS), they are only paid
-  once, until the bug is reproduced, whereas Kivati's are paid until a
-  programmer can generate a long-term fix, which may be significantly
-  later.
+  until a fix is generated for the nominated bug, whereas Kivati's
+  must be paid for as long as the program is to be protected.
 \item Kivati requires access to the program's source code during the
   initial static analysis phase, whereas SLI requires only the binary.
 \item SLI can be applied to a wider class of bugs than Kivati, such as
   the \verb|twovar| example described above.
+\item Kivati is, however, often able to prevent bugs which have never
+  been seen, whereas SLI must observe the program crash at least once
+  before attempting a fix; this might make it more useful if the
+  program to be protected has a large number of extremely unlikely
+  bugs, rather than a small number of moderately unlikely ones.
 \end{itemize}
-
-\editorial{Need an advantage of Kivati here, really.}
 
 Another approach, taken by systems such as Isolator
 \cite{Ramalingam2009} and ToleRace\cite{Ratanaworabhan2008}, restricts
