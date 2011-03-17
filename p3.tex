@@ -1,4 +1,4 @@
-\documentclass[10pt,letter,twocolumn]{article}
+\documentclass[10pt,letter,twocolumn]{sigplanconf}
 \setlength{\textheight}{9in}
 \setlength{\textwidth}{6.5in}
 \setlength{\headheight}{0in}
@@ -34,18 +34,18 @@
 
 \begin{document}
 
-%\conferenceinfo{SOSP 2011}{date, City.} 
+\conferenceinfo{SOSP 2011}{date, City.} 
 %\copyrightyear{2011} 
 %\copyrightdata{[to be supplied]} 
 
-%\titlebanner{Submitted to SOSP 2011}        % These are ignored unless
+\titlebanner{Submitted to SOSP 2011}        % These are ignored unless
 %\preprintfooter{short description of paper}   % 'preprint' option specified.
 
 \title{Speculative Lock Insertion}
 %\subtitle{Subtitle Text, if any}
 
 % For double-blind reviewing:
-%\authorinfo{}{}{}
+\authorinfo{}{}{}
 %\authorinfo{Name1}
 %           {Affiliation1}
 %           {Email1}
@@ -206,7 +206,7 @@ safely dereferenced) and \verb|CondEq| (which takes an x86
 set, indicating that the values compared were equal).
 
 Figure~\ref{fig:state_machines:a} shows the state machine generated
-for instruction \verb|A| in figure~\ref{fig:broken_privatize}, and
+for instruction \verb|A| in Figure~\ref{fig:broken_privatize}, and
 illustrates most of the important points of the scheme.  Starting from
 the top of the diagram, the state machine issues the store
 \verb|load(global1@A) -> (rsp)|, which corresponds to instruction
@@ -286,8 +286,9 @@ Z: jmp V
 \subfigure[Instruction J, the proximal
   cause]{\includegraphics[scale=0.3]{diagrams/statementJ.pdf}
   \label{fig:state_machines:j}}
-\caption{State machines produced for the example program.  Internal states are
-  indicated by diamonds, terminal states by ovals, and edges by lines.}
+\caption{State machines produced for the example program in
+  Figure~\ref{fig:broken_privatize}.  Internal states are indicated by
+  diamonds, terminal states by ovals, and edges by lines.}
 \label{fig:state_machines}
 \end{figure*}
 
@@ -312,7 +313,7 @@ with application-specific knowledge would be straightforward, and
 would allow other classes of bugs to be detected.  The result of this
 initial analysis is generally a state with only one internal state,
 referred to as the proximal cause; for the example, it is shown in
-figure~\ref{fig:state_machines:j}.
+Figure~\ref{fig:state_machines:j}.
 
 \subsection{Deriving earlier state machines}
 This proximal cause is accurate but not, by itself, sufficient to
@@ -336,11 +337,11 @@ register-register arithmetic instruction is regarded as a
 transformation on the program's register state then this can be
 accomplished by applying the same transformation to the given state
 machine.  For instance, in the example in
-figure~\ref{fig:broken_privatize}, the instruction preceding the
+Figure~\ref{fig:broken_privatize}, the instruction preceding the
 proximal cause is \verb|add $48, %rdx|.  This transforms \verb|rdx|
 into \verb|rdx+48|.  Applying this transformation to the proximal
 cause of the crash produces the state machine shown in
-figure~\ref{fig:state_machines:h}, which is valid at the start of
+Figure~\ref{fig:state_machines:h}, which is valid at the start of
 instruction \verb|H|.  Other simple register-to-register arithmetic
 instructions can be handled in the same way, and hence the crash
 reason can be backtracked across any sequence of such
@@ -387,10 +388,10 @@ that is immediately before \verb|H|.  This is simply the machine for
 \verb|H| with \verb|rdx| replaced with \verb|load(rcx@G)|, because
 instruction \verb|G| replaces \verb|rdx| with a load of the memory
 location pointed at by \verb|rcx|.  This is shown in
-figure~\ref{fig:state_machines:g}.  Likewise, instruction \verb|F|
+Figure~\ref{fig:state_machines:g}.  Likewise, instruction \verb|F|
 replaces \verb|rcx| with the contents of the memory location pointed
 at by \verb|rsp|, and so the state machine for instruction \verb|F| is
-as shown in figure~\ref{fig:state_machines:f}.
+as shown in Figure~\ref{fig:state_machines:f}.
 
 Accesses to the local stack are an important exception.  Cross-thread
 accesses to the stack are extremely rare, while intra-thread accesses
@@ -410,8 +411,9 @@ Branch instructions require more care, as they may involve parts of
 the program which were not used in the captured execution and for
 which no state machines will be available.  This would be simple if we
 could assume that any change to the program's control flow would be
-sufficient to avoid the bug, but this is not the case.  Consider, for
-instance, this example:
+sufficient to avoid the bug, but this is not the case as many branches
+are irrelevant to the observed bug.  Consider, for instance, this
+example:
 
 \begin{verbatim}
 1   p = global_ptr;
@@ -436,9 +438,9 @@ flow graph starting from the branch instruction and stopping when we
 encounter an instruction for which a state machine has already been
 derived (or an indirect branch which we cannot predict; see
 \S\ref{sect:indirect_branches})\footnote{We also impose a limit on the
-  number of instructions examined, but this was not reached in any of
-  our experiments.}.  We then eliminate any loops in the graph using a
-scheme described in \S\ref{sect:loops} and so produce a DAG of
+  number of instructions examined, but we have never reached this
+  limit in practice.}.  We then eliminate any loops in the graph using
+a scheme described in \S\ref{sect:loops} and so produce a DAG of
 instructions rooted at the branch instruction and whose leaves are
 state machines which have already been derived.  These state machines
 can then be propagated backwards through the graph using exactly the
@@ -463,9 +465,9 @@ heuristic is triggered.  Assuming that the store was ever executed in
 the captured execution, it will predict that the load at \verb|F| will
 load the stored value.  The load will therefore be eliminated, and so
 the state machine for instruction \verb|E| will be as shown in
-figure~\ref{fig:state_machines:e}.  It is now possible to combine the
+Figure~\ref{fig:state_machines:e}.  It is now possible to combine the
 machines for \verb|E| and \verb|F| to produce one for \verb|D|.  This
-is illustrated in figure \ref{fig:state_machines:d} (the left-hand
+is illustrated in Figure~\ref{fig:state_machines:d} (the left-hand
 branch is the machine for instruction \verb|F| and the right-hand one
 that for instruction \verb|E|).  The state machines for instructions
 \verb|C|, \verb|B| and \verb|A| can now be derived using the
@@ -492,14 +494,10 @@ accurate characterizations.\editorial{ref phase order problem?}
 \subsubsection{Indirect branches}
 \label{sect:indirect_branches}
 Indirect branches, and any other branches which compute their target
-dynamically, pose an additional challenge here, as it is often
-difficult to statically predict the target of the branch.  The most
-common case is return instructions, and we handle these by inlining
-called functions, eliminating most return instructions completely.
-The remainder correspond to functions which had started but not
-completed at the time of the crash, and we assume that if any of those
-return then the bug has been avoided.\editorial{This should be much
-  earlier!}
+dynamically, pose an additional challenge here, as it is generally
+difficult to statically predict the target of the branch.
+Fortunately, one common case is return instructions, and we can handle
+these by inlining called functions.
 
 Other indirect branch instructions are more challenging.  We solve
 this problem by using the captured trace as a simple oracle: if the
@@ -523,8 +521,8 @@ breaking them, removing a subset of the graph's edges so as to
 eliminate the loop.  We choose edges to remove based on two
 heuristics.  First, we try not to remove any edges which are present
 in the captured execution.  Second, we try not to partition the graph,
-so as many instructions as possible, and hence as much of the
-program's behavior as possible, are represented in the final state
+so as many instructions as possible --- and hence as much of the
+program's behavior as possible --- are represented in the final state
 machine.
 
 Breaking loops has the useful side-effect of disambiguating the labels
@@ -557,17 +555,9 @@ stack locations.  This has the useful side-effect of ``detaching'' the
 state machine from a particular point in the program's execution and
 allowing it to be applied to other memory configurations.
 
-This step often results in the construction of duplicate state
-machines, and these are eliminated in the obvious
-way\editorial{Someone complained that the previous draft didn't
-  specify the definition of duplicate, but I really can't be bothered
-  to spell it out.}.
-
 Similar is defined here to mean that the instruction pointer and call
-stack match.  Other definitions would also be possible; all that SLI
-requires for correctness is that the point for which the machine was
-derived is similar to itself.  A more flexible definition would allow
-more dynamic instances of the structure to be discovered, and so more
+stack match.  A more flexible definition would allow more dynamic
+instances of the structure to be discovered, and so more
 potentially-conflicting updates would be discovered and a more
 complete fix could be generated, but would increase the risk of
 unrelated concrete operations being falsely identified as instances of
@@ -626,131 +616,165 @@ correspond to update operations against which the read operation must
 be synchronised.
 
 Determining the possibly-conflicting stores is straightforward.  We
-already have, from the previous stage, a list of the memory locations
-which each state machine loads, and it is then simple to use the DRS
-log to discover all instructions which store to one of those
-locations.  As before, we use calls to the memory allocator to scope
-memory locations and avoid synchronising against accesses to other
-structures which simply happen to have been assigned the same virtual
-addresses.
+already have, from the previous analysis, a list of the memory
+locations which each state machine loads, and it is then simple to use
+the DRS log to discover all instructions which store to one of those
+locations.  As before, we use calls to the memory allocator to
+temporally scope memory locations and avoid synchronising against
+accesses to other structures which simply happen to have been assigned
+the same virtual addresses.
 
-To determine the regions of the log when a state machine would crash,
-we replay the log over the range of validity of the state machine and
-evaluate the state machine before and after every possibly-conflicting
-store instruction.  In many cases, the machine will always evaluate to
-\verb|no-crash|, which indicates that the read operation is always
-safe when executed atomically and so no further synchronisation needs
-to be added.  If the operation is not always safe to execute
-atomically then there will be some \verb|crash| regions in the log.
-If the starting and ending stores of the region are issued by the same
-thread then this corresponds to a simple update of the memory
-structure, and all that is needed is for the relevant range of
-instructions in the storing thread to be synchronised to not run in
-parallel with the read operation.  Otherwise, the update operation
-spans several threads, and SLI is unable to generate a fix.  In that
-case, we simply ignore the crashing region and synchronise against any
-remaining stores.
+To determine the regions of the log when a state machine predicts a
+crash, we replay the log over the range of validity of the state
+machine and evaluate the state machine before and after every
+possibly-conflicting store instruction.  In many cases, the machine
+will always evaluate to \verb|no-crash|, which indicates that the read
+operation is always safe when executed atomically and so no further
+synchronisation needs to be added.  If the operation is not always
+safe to execute atomically then there will be some \verb|crash|
+regions in the log.  If the starting and ending stores of the region
+are issued by the same thread then this corresponds to a simple update
+of the memory structure, and all that is needed is for the relevant
+range of instructions in the storing thread to be synchronised to not
+run in parallel with the read operation.  Otherwise, the update
+operation spans several threads, and SLI is unable to generate a fix.
+In that case, we simply ignore the crashing region and synchronise
+against any remaining stores.
 
 \section{Producing a fix}
 We now have, for each specialised state machine:
 
 \begin{itemize}
 \item The set of loads which it issues which might be involved in a
-  race.
-\item A list of ranges of the dynamic execution where issuing the
-  read operation might be unsafe.
-\item A list of all of the static store instructions which might race with
-  the read operation.
+  race;
+\item A list of ranges of the dynamic execution where issuing the read
+  operation might be unsafe; and
+\item A list of all of the static store instructions which might race
+  with the read operation.
 \end{itemize}
 
 The task is to combine these, across all of the state machines, and
-synthesise from them an appropriate fix for the observed bug.  For
+synthesize from them an appropriate fix for the observed bug.  For
 SLI, the fix will consist of a newly-created global (recursive) lock
 plus a number of lock acquire and release operations.  We must use
 these to ensure that the read operation does not occur in parallel
 with any of the store instructions, and does not occur during any of
 the unsafe ranges.
 
-We now simplify the problem by expanding the dynamic ranges such that
-their start and end points are in the same dynamic function
-invocation.  Since the start and end are executed by the same thread,
-there must be some frame which is common to both call stacks, and SLI
-selects the function corresponding to the last such frame to insert
-synchronisation into.  If the start and end points are not already in
-the desired frame then this will require the region to be expanded
-until they are.  This is straightforward.  To move the start, SLI
-simply finds the last function call made by the desired frame before
-current start point and designates that function call to be the new
-start point.  Likewise, the end point is moved to be immediately after
-the last function call made by the desired frame before the current
-end point.  The set of loads can likewise be moved to be within a
-single function by assigning loads which are issued by called
-functions to the call instruction.
+As stated, this involves comparing ranges of the program's dynamic
+execution to instructions or sets of instructions in its static image.
+This is not entirely well-defined.  We must therefore either convert
+the static instruction references to points in the dynamic execution
+or dynamic ranges of execution to some suitable static representation;
+we choose to convert the dynamic ranges to static ones.  In other
+words, we will find some self-contained fragment of the program's
+static control flow graph and declare that to be equivalent to the
+dynamic range.
 
-These synchronisation regions are now converted into code patches.
-Each code patch consists of a fragment of the original program,
-modified such that patches always run atomically with respect to other
-patches.  There will be at most one such patch for every
-synchronisation region derived above.
+This is most straightforward if the dynamic range is contained
+entirely within a single function invocation.  However, even this case
+is not entirely trivial.  The most obvious approach is to simply
+acquire the lock on the instruction which corresponds to the start of
+the range and drop it again on the instruction which corresponds to
+its end, but this is unsafe because there might be some other branch
+in between the two instructions which would allow the lock to be
+acquired but never released.  It would be possible to design a simple
+analysis to detect such branches to and arrange to drop the lock if
+one is ever taken, but this would cause any irrelevant branches (as
+discussed in \S\ref{sect:branch_instrs}) to terminate the locked
+region, causing the fixes to be much less effective.
 
-The first stage of building a patch is to determine which instructions
-should be in it.  The procedure for doing so is similar but not quite
-identical for each of the types of region.  For simple store
-instructions, it is easy: the patch contains just the store
-instruction in question.  For unsafe regions, we start by building a
-control flow graph starting at the start of the region and terminating
-at its end or at the end of the enclosing function and then remove any
-instructions which cannot reach the end point; any instructions which
-remain in the control flow graph will be represented in the patch.
-The approach for the load set is similar: we build a control flow
-graph starting from every load in the load set and terminating at the
-end of the function, and then remove any instruction which cannot
-reach a load in the load set.
+We therefore use a more subtle approach.  Starting from an empty
+control flow graph, we add every instruction which is executed in the
+range, with branches to instructions not executed in the range
+replaced with special stub instructions.  We expand the control flow
+graph by exploring the code with is reachable from these stub
+instructions until we reach an indirect branch (including the end of
+the function), and then trim the graph back by removing any
+instruction which cannot reach one of the instructions which was in
+the original dynamic range.  The remaining instructions are precisely
+those which are reachable from the instructions in the dynamic range
+and which are able to return to it, and it is these instructions which
+we protect.  Any branch outside of this set is treated as the end of
+the critical section and modified so that it drops the lock.  The
+instruction corresponding to the start of the dynamic range is
+labelled as the CFG's entry point; this will be significant later.
 
-The patch can now be constructed by duplicating all of the
-instructions which are contained in it, being careful to update any
-instruction pointer-relative addresses in an appropriate way.  All of
-the instructions in the set of instructions for which the patch was
-derived are modified to acquire the lock and then branch to the patch,
-and wherever a branch in the patch targets an instruction not in the
-patch it is modified to drop the lock and then branch back to the
-original code.  In this way it is possible to ensure that no two
-patches can ever execute in parallel, and that lock acquisitions are
-always precisely matched to lock releases (ignoring abnormal control
-transfers such as \verb|longjmp|)\editorial{Very non-obvious why this
-  is true.}.  Once every instruction set has been converted to a patch
-in this way, the resulting code can be compiled into an ELF shared
-library which can be loaded into the target program using
-\verb|LD_PRELOAD| (or an equivalent mechanism) and which will apply
-the generated fix.
+In many cases the region to be protected will include multiple
+function invocations.  Functions which are contained entirely within
+the region are straightforward, and can be largely ignored: the
+mechanism already described will ensure that we acquire the lock
+precisely once before calling them, and release it precisely once
+after they return\footnote{Abnormal control flow transfers such as
+  longjmp break this pattern; we check whether the DRS log contains
+  any such transfer out of the called function, and abort if it does,
+  but do not otherwise handle them.}.  Function invocations which are
+in progress at the start or end of the range are more challenging.  We
+handle them by expanding the dynamic range at the start and end by the
+minimum amount such that every function which is called after the
+start of the dynamic range has returned before it ends, and hence
+sidestep the problem.  Equivalently, we nominate the last stack frame
+which is common throughout the range as being responsible for the bug
+and then map any accesses made by functions called from that frame to
+the relevant call instruction.
 
+The set of loads is also expanded into a fragment of control flow
+graph in much the same way.  Starting from a graph which contains just
+the instructions which are to be protected, we expand forwards to the
+end of the function and then trim any excess instructions.  We then
+nominate some instructions as entry points of the graph, such that no
+entry point can reach another one and every instruction is reachable
+from at least one entry point.
+
+The individual store instructions are also converted into trivial
+single-instruction control flow graphs.
+
+The CFGs are now converted into fragments of machine code which are
+equivalent to the original code except:
+
+\begin{itemize}
+\item They can be safely relocated, updating instruction pointer-relative
+  addresses as appropriate;
+\item Any branches to other instructions in the CFG refer to the
+  equivalent instructions in the new fragment of machine code; and
+\item Any branches to instructions not in the CFG are modified to
+  drop the lock before jumping.
+\end{itemize}
+
+\noindent
 Sometimes code patches can overlap.  A moderate amount of care is
 required to ensure that the resulting composite fix behaves correctly,
 but this is not conceptually difficult provided that the lock is
-recursively acquirable; see below for details.  SLI applies some very
-simple optimisations to avoid some obviously unfortunate edge cases
-(for instance, if one patch is a subset of another then it can be
-safely eliminated), but these are neither necessary for correctness
-nor particularly interesting, and we do not discuss them in detail
-here.
+recursively acquirable; see below for details.
 
-Modifying acquiring instructions to branch to the new code is
-sometimes difficult, as the instruction to be patched might be too
-small to encode a branch instruction, and enlarging an instruction is
-dangerous unless one is able to prove that the following instruction
-is never the target of a branch.  SLI avoids this issue by using the
-processor's debugging facilities to set breakpoints on the acquiring
-instructions, and then transferring to the new code from the relevant
-exception handler.  On x86 architectures, the breakpoint instruction
-is a single byte, and so always fits in the instruction to be patched.
+The original program must now be modified such that instructions which
+were labelled as entry points of a CFG now acquire the lock and branch
+to the relevant instruction in the patch.  Other instructions in the
+program are left unmodified; this ensures that paths which were not
+considered while deriving the fix are unaffected.
 
-There is also a risk that the proposed patch will introduce a
-deadlock.  We avoid this issue with a simple timeout scheme: if a
-thread takes more than a second to acquire an SLI-introduced lock, it
-will time out, and immediately branch back to the unpatched code.
-This is sufficient to ensure forward progress, but renders the
-purported fix ineffective and could lead to very poor performance.
-Fortunately, it has not been a problem for us so far.
+Modifying entry point instructions is sometimes difficult, as the
+instruction to be patched might be too small to encode a branch
+instruction, and enlarging an instruction is dangerous unless one is
+able to prove that the following instruction is never the target of a
+branch.  SLI avoids this issue by using the processor's debugging
+facilities to set breakpoints on the acquiring instructions, and then
+transferring to the new code from the relevant exception handler.  On
+x86 architectures, the breakpoint instruction is a single byte, and so
+always fits in the instruction to be patched.
+
+After all of the patches have been constructed, the resulting code can
+be compiled into an ELF shared library which can be loaded into the
+target program using \verb|LD_PRELOAD| (or an equivalent mechanism)
+and which will apply the generated fix.  
+
+There is a risk that the proposed fix will introduce a deadlock.  We
+avoid this issue with a simple timeout scheme: if a thread takes more
+than a second to acquire an SLI-introduced lock, it will time out, and
+immediately jump back to the unpatched code.  This is sufficient to
+ensure forward progress, but renders the purported fix ineffective and
+could lead to very poor performance.  Fortunately, it has not been a
+problem for us so far.
 
 \subsection{Selecting a fix}
 \label{sect:selectfix}
@@ -781,25 +805,21 @@ obviously lead to pathological performance.
 \subsection{Example}
 \label{sect:final_example}
 
-Our earlier example derived the state machine shown in figure
-\ref{fig:state_machines:a} for the program shown in figure
-\ref{fig:broken_privatize}.  The only register referenced in the
-machine is \verb|rsp|, and so specialisation will then simply amount
-to substituting in constant values for that register.  Assume that
-only one place in the log is considered to be similar to the point for
-which the machine was derived, and in that in that case \verb|rsp| was
-\verb|8A5648|.  In that case, the only specialisation of the machine
-will be as shown in figure~\ref{fig:specialised_example_machine}.  The
-only locations accessed when evaluating this machine will be
-\verb|global1|, \verb|fallback|, and \verb|variable1|.  None of these
-are dynamically allocated, and so the machine is valid throughout the
-log.  The possibly-conflicting stores list will then consist of every
-dynamic instance of instructions \verb|V|, \verb|W|, \verb|X|, and
-\verb|Y|.
+Our earlier example derived the state machine shown in
+Figure~\ref{fig:state_machines:a} for the program shown in
+Figure~\ref{fig:broken_privatize}.  The only register referenced in
+the machine is \verb|rsp|, and so specialization will then simply
+amount to substituting in constant values for that register.  This
+will not affect the structure of the machine.  The only locations
+accessed when evaluating this machine will be \verb|global1|,
+\verb|fallback|, and \verb|variable1|.  None of these are dynamically
+allocated, and so the machine is valid throughout the log.  The
+possibly-conflicting stores list will then consist of every dynamic
+instance of instructions \verb|V|, \verb|W|, \verb|X|, and \verb|Y|.
 
 \begin{figure}[thb]
 \includegraphics[scale=0.3]{diagrams/specialise_3.pdf}
-\caption{Results of specialising figure~\ref{fig:state_machines:a}}
+\caption{Results of specialising Figure~\ref{fig:state_machines:a}}
 \label{fig:specialised_example_machine}
 \end{figure}
 
@@ -808,8 +828,8 @@ requires us to evaluate the state machine before and after every
 possibly-conflicting store.  In this case, this will always evaluate
 to \verb|no-crash|, which is correct: if the reader were executed
 atomically, it would never crash, regardless of what state the writer
-was in.  There are therefore no unsafe regions, and the instruction
-sets to be protected are simply:
+was in.  There are therefore no unsafe regions, and the instructions
+to be protected are simply:
 
 \begin{itemize}
 \item All of the loads issued by thread 1 which are mentioned in the
@@ -821,15 +841,15 @@ sets to be protected are simply:
 \item The instruction \verb|Y|.
 \end{itemize}
 
-We must now construct appropriate code patches.  In this case, none of
-the regions' control flow graphs will overlap, and so there will be
-one patch for each.  For the single-instruction regions, the patch
-will contain a lock operation, the instruction in the set, an unlock
-operation, and a branch back to the original code.  For the load
-region, the patch will contain the lock and unlock operations, the
-instructions from \verb|A| to \verb|G|, and a branch back to
-instruction \verb|H| in the original code.  Note several important
-properties of this patch:
+We must now construct appropriate code patches.  Consider the load set
+(the store instructions are trivial).  The control flow graph will in
+this case contain every instruction from \verb|A| to \verb|G| in
+Figure~\ref{fig:broken_privatize} and \verb|A| will be nominated as
+the entry point.  The patch will therefore consist of duplicates of
+those instructions followed by a lock release operation and a branch
+back to instruction \verb|H|, and instruction \verb|A| will be
+modified to acquire the lock and jump to the start of the patch.  Note
+several important properties of this patch:
 
 \begin{itemize}
 \item When the branch instruction at \verb|D| is duplicated, it is
@@ -840,7 +860,7 @@ properties of this patch:
   race has already happened, and so it is too late to try to prevent
   it and protecting that instruction would not be helpful.
 \item If the program enters the code shown in
-  figure~\ref{fig:broken_privatize}'s thread 1 anywhere other than
+  Figure~\ref{fig:broken_privatize}'s thread 1 anywhere other than
   instruction \verb|A| it will not be affected by the patch.  In
   particular, there is no danger of the lock being released without
   first being acquired.  However, the program will not be protected
@@ -851,12 +871,12 @@ properties of this patch:
 This is not the only fix which will be suggested, however.  State
 machine generation will also have produced machines for other
 instructions in the crashing thread.  Consider, in particular, the
-state machine shown in figure~\ref{fig:state_machines:f}.  As this
+state machine shown in Figure~\ref{fig:state_machines:f}.  As this
 accesses both registers and the stack, it can be specialized.  Assume
 now that the DRS log contains at least one instance of the read
 operation in which the branch at \verb|D| is taken and one in which it
 is not.  In that case, there will be two specialisations, shown in
-figure~\ref{fig:example_specialisations}, one corresponding to the
+Figure~\ref{fig:example_specialisations}, one corresponding to the
 branch-taken case and one to the branch-not-taken one.
 
 \begin{figure}[thb]
@@ -864,40 +884,127 @@ branch-taken case and one to the branch-not-taken one.
   \label{fig:specialise_taken}}
 \subfigure[Branch not taken]{\includegraphics[scale=0.34]{diagrams/specialise_2.pdf}
   \label{fig:specialise_not_taken}}
-\caption{Results of specialising figure~\ref{fig:state_machines:f}}
+\caption{Results of specialising Figure~\ref{fig:state_machines:f}}
 \label{fig:example_specialisations}
 \end{figure}
 
-The captured execution shows no writes to \verb|fallback|, and so the
-\verb|load| in figure~\ref{fig:specialise_not_taken} is replaced with
-a constant and the entire machine is subject to constant folding,
-producing the trivial machine \verb|no-crash|.  It is therefore
-discarded.  The machine in figure~\ref{fig:specialise_taken}, however,
-produces another suggested fix.  In this case, the state machine
-evaluates to \verb|crash| whenever \verb|variable1| is zero
-i.e. whenever thread 2 is between instructions \verb|Y| and \verb|V|.
-SLI therefore produces alternative sets of instructions to protect:
+These machines produce another suggested fix.  Machine
+Figure~\ref{fig:specialise_taken} will predict a crash whenever
+\verb|variable1| is zero, i.e. whenever thread 2 is between
+instructions \verb|Y| and \verb|V|, and so there will be at least one
+unsafe dynamic range.  Assume for the sake of exposition that there is
+precisely one such range.  The CFG will contain all of the
+instructions from \verb|Y| to \verb|V|, crossing the back edge of the
+loop.  A patch will be created which duplicates these instructions
+before dropping the lock and jumping back to instruction \verb|W|, and
+instruction \verb|Y| will be modified to acquire the lock and branch
+to this patch, as shown in Figure~\ref{fig:patch1}.
 
-\begin{itemize}
-\item The only load instruction to be protected is \verb|G|.
-\item There will be an unsafe region from \verb|Y| to \verb|V|. 
-\item There will be single-instruction regions for \verb|V| and
-  \verb|Y|.  Our prototype will recognise that these are redundant
-  because they are covered by the unsafe region and eliminate them
-  before proceeding any further.
-\end{itemize}
+\begin{figure}
+  \begin{subfloat}
+    \begin{minipage}{60mm}
+\begin{verbatim}
+V: mov &struct1 -> (variable1)
+W: mov &variable1 -> (global1)
+...
+X: mov $0 -> (global1)
+Y: acquire_and_jmp Y'
+U: ...
+Z: jmp V
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \begin{subfloat}
+    \begin{minipage}{50mm}
+\begin{verbatim}
+Y':  mov $0 -> (variable1)
+U':  ...
+Z':  jmp V'
+V':  mov &struct1 -> (variable1)
+a:   release()
+b:   jmp W
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \caption{Partial patch based on the state machine in figure~\ref{fig:specialise_taken}.}
+  \label{fig:patch1}
+\end{figure}
 
-The first region will be instantiated into a trivial
-single-instruction patch, as the store instructions were in the
-previous example.  We also construct a patch for the code in
-figure~\ref{fig:broken_privatize}'s thread 2 which duplicates
-instructions \verb|Y|, \verb|Z|, and \verb|V|, plus all of the
-instructions between \verb|Y| and \verb|Z|, and which drops the lock
-and branches back to instruction \verb|W| at the end.  These patches
-would also fix the bug.  Furthermore, assuming that there are only a
-small number of instructions between \verb|Y| and \verb|Z|, they will
-be preferred by the prioritisation heuristic, because they require
-fewer critical sections.
+The only load instruction mentioned in the state machines is \verb|G|,
+and that will be instantiated into a trivial single-instruction patch
+as the store instructions were in the previous example.
+
+The potentially conflicting stores will be \verb|Y| and \verb|V| in
+this case.  These are more interesting, as they overlap with the
+existing critical section.  In particular, there are now two versions
+of \verb|V| in the program (the original version and the one in the
+previous patch), and both must be patched, while \verb|Y|, as the
+entry point of the previous patch, has been effectively moved, and the
+new version is the one which must be patched.  The resulting patch set
+will be as shown in Figure~\ref{fig:patch2}.  These patches will also
+fix the bug, and, assuming that there are only a small number of
+instructions between \verb|Y| and \verb|Z|, they will be preferred by
+the prioritisation heuristic, because they require fewer critical
+sections.
+
+\begin{figure}
+  \begin{subfloat}
+    \begin{minipage}{60mm}
+\begin{verbatim}
+V: jmp V''
+W: mov &variable1 -> (global1)
+...
+X: mov $0 -> (global1)
+Y: acquire_and_jmp Y'
+U: ...
+Z: jmp V
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \begin{subfloat}
+    \begin{minipage}{50mm}
+\begin{verbatim}
+Y':  acquire_and_jmp Y''
+U':  ...
+Z':  jmp V'
+V':  jmp V'''
+a:   release()
+b:   jmp W
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \begin{subfloat}
+    \begin{minipage}{50mm}
+\begin{verbatim}
+Y'': mov $0 -> (variable1)
+     release()
+     jmp U'
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \begin{subfloat}
+    \begin{minipage}{50mm}
+\begin{verbatim}
+V'': mov &struct1 -> (variable1)
+     release()
+     jmp W
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \begin{subfloat}
+    \begin{minipage}{50mm}
+\begin{verbatim}
+V''':mov &struct1 -> (variable1)
+     release()
+     jmp a
+\end{verbatim}
+    \end{minipage}
+  \end{subfloat}
+  \caption{Complete patch based on the state machine in
+    Figure~\ref{fig:specialise_taken}, extending
+    Figure~\ref{fig:patch1}.}
+  \label{fig:patch2}
+\end{figure}
 
 It could be argued that this smaller fix is inferior to the larger
 alternative, despite completely eliminating the crash and potentially
@@ -923,119 +1030,6 @@ does not rely on programmer annotations (ignoring trivial systems
 which just pattern-match the buggy code against a library of common
 bugs and their standard fixes).\editorial{This could do with being a
   bit earlier.}
-
-\begin{figure}
-  \begin{subfloat}
-    \begin{minipage}{60mm}
-\begin{verbatim}
-V: acquire_and_jmp V'1
-W: mov &variable1 -> (global1)
-...
-X: mov $0 -> (global1)
-Y: acquire_and_jmp Y'1
-U: ...
-Z: jmp V
-\end{verbatim}
-    \end{minipage}
-  \end{subfloat}
-  \begin{subfloat}
-    \begin{minipage}{60mm}
-\begin{verbatim}
-V'1: mov &struct1 -> (variable1)
-V'2: release()
-V'3: jmp W
-\end{verbatim}
-    \end{minipage}
-  \end{subfloat}
-  \begin{subfloat}
-    \begin{minipage}{50mm}
-\begin{verbatim}
-Y'1:  mov $0 -> (variable1)
-Y'2:  release()
-Y'3:  jmp U
-\end{verbatim}
-    \end{minipage}
-  \end{subfloat}
-  \caption{Partial patch based on the state machine in figure~\ref{fig:specialise_taken}.}
-  \label{fig:patch1}
-\end{figure}
-
-It is instructive to consider what would have happened if the
-redundant singleton sections had not been eliminated.  In that case,
-SLI would have constructed patches for each of the singleton sets, as
-shown in figure~\ref{fig:patch1}, before extending it to cover the
-unsafe region and producing a final patch set shown in
-figure~\ref{fig:patch2}.
-
-\begin{figure}
-  \begin{subfloat}
-    \begin{minipage}{80mm}
-\begin{verbatim}
-V: acquire_and_jmp V'1
-W: mov &variable1 -> (global1)
-...
-X: mov $0 -> (global1)
-Y: acquire_and_jmp Y''
-U: ...
-Z: jmp V
-\end{verbatim}
-    \end{minipage}
-  \end{subfloat}
-  \begin{subfloat}
-    \begin{minipage}{80mm}
-\begin{verbatim}
-V'1: mov &struct1 -> (variable1)
-V'2: release()
-V'3: jmp W
-\end{verbatim}
-    \end{minipage}
-  \end{subfloat}
-  \begin{subfloat}
-    \begin{minipage}{80mm}
-\begin{verbatim}
-Y'1:  mov $0 -> (variable1)
-Y'2:  release()
-Y'3:  jmp U
-\end{verbatim}
-    \end{minipage}
-  \end{subfloat}
-  \begin{subfloat}
-    \begin{minipage}{80mm}
-\begin{verbatim}
-Y'' : acquire_and_jmp Y'1'
-Y'1': mov $0 -> (variable1)
-Y'2': release()
-Y'3': jmp U''
-U'':  ...
-Z'':  jmp V''1
-V''1: jmp V'1
-\end{verbatim}
-    \end{minipage}
-  \end{subfloat}
-  \caption{Complete patch based on the state machine in
-    figure~\ref{fig:specialise_taken}, extending
-    figure~\ref{fig:patch1}.}
-  \label{fig:patch2}
-\end{figure}
-
-This requires some explanation.  The new critical region starts at
-instruction \verb|Y|, and so we rewrite \verb|Y| to be an
-acquire-and-branch instruction to a new patch.  \verb|Y| starts off as
-\verb|acquire_and_jmp Y'1|, and so the first instruction of the patch
-is a similar \verb|acquire_and_jmp| instruction modified to branch to
-a duplicate of \verb|Y'1|.  \verb|Y'1| is now duplicated to
-\verb|Y'1'|, and so are the following instructions.  We continue
-duplicating code following the control flow graph until we reach
-instruction \verb|V|.  This is the final instruction in the range to
-be protected, and so the new patch should issue that instruction,
-release the lock, and branch back to the original code.  In this case,
-the instruction to be issued is itself an \verb|acquire_and_jmp|, and
-so SLI optimises slightly by rewriting it to a simple \verb|jmp V'1|.
-
-This illustrates that the binary patching algorithm will perform
-correctly even in the presence of overlapping critical sections,
-although it may in some cases produce less efficient synchronisation
-patterns.
 
 \section{Evaluation}
 \label{sect:evaluation}
@@ -1121,9 +1115,9 @@ One important parameter to the system is how far to backtrack through
 the crashed thread, and hence how many state machines to generate,
 before attempting to derive a fix.  For implementation reasons, our
 prototype will always backtrack to a branch instruction, and for the
-above tests we limited this backtracking to ten branches.  Figure
-\ref{fig:eval:backtrack} shows the effect of changing this parameter
-on the time taken by the non-replay components of the
+above tests we limited this backtracking to ten branches.
+Figure~\ref{fig:eval:backtrack} shows the effect of changing this
+parameter on the time taken by the non-replay components of the
 \verb|thunderbird| test (the replay components were unchanged).  It
 can be seen that the time taken increases moderately as the distance
 which we backtrack increases, from $0.57$ seconds when backtracking
@@ -1230,14 +1224,13 @@ level without any reference to the program's intended semantics.
 
 \verb|privatize| is the converse of \verb|publish|: a thread is
 attempting to make a structure private, and does it incorrectly.  It
-is similar to the example program in figure
-\ref{fig:broken_privatize}, which has already been extensively
+is similar to the example program in Figure~\ref{fig:broken_privatize}, which has already been extensively
 discussed.
 
 \verb|glibc| is a kernel of glibc bug 2644 \cite{glibc2644}, which
 affected versions of glibc up to 2.5 and could lead to a crash if
 multiple threads were shut down at the same time.  A simplified
-version of the code involved is shown in figure \ref{fig:glibc}, where
+version of the code involved is shown in Figure~\ref{fig:glibc}, where
 \verb|forcedunwind| and \verb|done_init| are global variables.  Note
 that the bug here depends on the compiler's optimizer, and is not
 apparent at the source-code level\footnote{Unfortunately, only the

@@ -903,40 +903,6 @@
 %                       ------- ----- --- ----
 
 
-\def \@preprintfooter {}
-
-\newcommand{\preprintfooter}[1]{%
-  \gdef \@preprintfooter {#1}}
-
-\if \@preprint
-
-\def \ps@plain {%
-  \let \@mkboth = \@gobbletwo
-  \let \@evenhead = \@empty
-  \def \@evenfoot {\scriptsize \textit{\@preprintfooter}\hfil \thepage \hfil
-                   \textit{\@formatyear}}%
-  \let \@oddhead = \@empty
-  \let \@oddfoot = \@evenfoot}
-
-\else\if \@reprint
-
-\def \ps@plain {%
-  \let \@mkboth = \@gobbletwo
-  \let \@evenhead = \@empty
-  \def \@evenfoot {\scriptsize \hfil \thepage \hfil}%
-  \let \@oddhead = \@empty
-  \let \@oddfoot = \@evenfoot}
-
-\else
-
-\let \ps@plain = \ps@empty
-\let \ps@headings = \ps@empty
-\let \ps@myheadings = \ps@empty
-
-\fi\fi
-
-\def \@formatyear {%
-  \number\year/\number\month/\number\day}
 
 %                       Special Characters
 %                       ------- ----------
