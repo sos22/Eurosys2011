@@ -207,19 +207,18 @@ set, indicating that the values compared were equal).
 
 Figure~\ref{fig:state_machines:a} shows the state machine generated
 for instruction \verb|A| in Figure~\ref{fig:broken_privatize}, and
-illustrates most of the important points of the scheme.  Starting from
-the top of the diagram, the state machine issues the store
-\verb|load(global1@A) -> (rsp)|, which corresponds to instruction
-\verb|B| and indicates that the value loaded from \verb|global1| at
-instruction \verb|A| is stored in the memory location pointed at by
-register \verb|rsp|.  The state machine then evaluates
-\verb|load(global1@A) == 0| and goes left if the value is false
-(corresponding to the branch at instruction \verb|D| being taken) or
-right if it is true (corresponding to the branch at \verb|D| not being
-taken).  In either case, it performs one final test on the contents of
-memory, with the result determining whether or not the program
-crashes.  The remainder of this section details our algorithm for
-producing these state machines automatically.
+illustrates most of the important points of the scheme.  The state
+machine first issues the store \verb|load(global1@A) -> (rsp)|, which
+corresponds to instruction \verb|B| and indicates that the value
+loaded from \verb|global1| at instruction \verb|A| is stored in the
+memory location pointed at by register \verb|rsp|.  The state machine
+then evaluates \verb|load(global1@A) == 0| and goes left if the value
+is false (corresponding to the branch at instruction \verb|D| being
+taken) or right if it is true (corresponding to the branch at \verb|D|
+not being taken).  In either case, it performs one final test on the
+contents of memory, with the result determining whether or not the
+program crashes.  The remainder of this section details our algorithm
+for producing these state machines automatically.
 
 \begin{figure*}
  \begin{subfloat}
@@ -666,10 +665,8 @@ execution to instructions or sets of instructions in its static image.
 This is not entirely well-defined.  We must therefore either convert
 the static instruction references to points in the dynamic execution
 or dynamic ranges of execution to some suitable static representation;
-we choose to convert the dynamic ranges to static ones.  In other
-words, we will find some self-contained fragment of the program's
-static control flow graph and declare that to be equivalent to the
-dynamic range.
+we choose to convert the dynamic ranges to fragments of the program's
+static control flow graph.
 
 This is most straightforward if the dynamic range is contained
 entirely within a single function invocation.  However, even this case
@@ -722,11 +719,11 @@ The set of loads is also expanded into a fragment of control flow
 graph in much the same way.  Starting from a graph which contains just
 the instructions which are to be protected, we expand forwards to the
 end of the function and then trim any excess instructions.  We then
-nominate some instructions as entry points of the graph, such that no
+nominate some instructions as entry points of the graph such that no
 entry point can reach another one and every instruction is reachable
 from at least one entry point.
 
-The individual store instructions are also converted into trivial
+The store instructions are also converted into trivial
 single-instruction control flow graphs.
 
 The CFGs are now converted into fragments of machine code which are
@@ -849,22 +846,13 @@ the entry point.  The patch will therefore consist of duplicates of
 those instructions followed by a lock release operation and a branch
 back to instruction \verb|H|, and instruction \verb|A| will be
 modified to acquire the lock and jump to the start of the patch.  Note
-several important properties of this patch:
+two important properties of this patch:
 
 \begin{itemize}
-\item When the branch instruction at \verb|D| is duplicated, it is
-  rewritten such that both the taken and untaken exits point into the
-  new patch, rather than into the original code.
 \item The instruction which crashed, \verb|J|, is not included in any
   critical region.  By the time instruction \verb|J| executes, the
   race has already happened, and so it is too late to try to prevent
   it and protecting that instruction would not be helpful.
-\item If the program enters the code shown in
-  Figure~\ref{fig:broken_privatize}'s thread 1 anywhere other than
-  instruction \verb|A| it will not be affected by the patch.  In
-  particular, there is no danger of the lock being released without
-  first being acquired.  However, the program will not be protected
-  against any other possible races.
 \item The fix is correct: it completely eliminates the observed bug.
 \end{itemize}
 
@@ -1469,11 +1457,6 @@ produces much more targeted fixes.  We do not claim to have found the
 optimal combination of these two approaches, or even that a global
 optimum exists; better characterizing the trade-offs involved is
 likely to suggest useful improvements.
-
-There may also be scope for significantly optimising the DRS used.
-SLI, at present, collects an enormous amount of information which it
-then discards, and collecting less information could lead to
-worthwhile performance improvements.
 
 There is a similar balance to be struck between attempting to be
 completely generic and using semantic knowledge, both of the program
