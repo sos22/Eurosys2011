@@ -158,41 +158,72 @@ SLI fixing the wrong bug).  The most obvious way of capturing an
 execution, used in our prototype, is to simply record every single
 memory access issued by the program, which is effective but has
 extremely high overhead.  This could be reduced by using a more
-intelligent recording mechanism such as PRES or ODR\cite{Altekar2009},
-both of which record only a few critical events and discover the rest
-only when they are needed during replay.  This can reduce overhead to
-a level where it is sensible to run with recording enabled by default.
-ESD\cite{Zamfir2010} is an extreme form of this approach, and logs
-nothing at all but instead attempts to recreate the path to failure
-given just the state of the program at the time of the crash.  In a
-slightly different context, an automatic program exerciser such as
-CHESS\cite{Musuvathi2008} could be used to detect unknown bugs, which
-could then be passed to SLI to be automatically characterized and
-fixed.\editorial{I want to use the phrase closed-loop here}
+intelligent recording mechanism such as PRES\cite{Park2009} or
+ODR\cite{Altekar2009}, both of which record only a few critical events
+and discover the rest only when they are needed during replay.  This
+can reduce overhead to a level where it is sensible to run with
+recording enabled by default.  ESD\cite{Zamfir2010} is an extreme form
+of this approach, and logs nothing at all but instead attempts to
+recreate the path to failure given just the state of the program at
+the time of the crash.  In a slightly different context, an automatic
+program exerciser such as CHESS\cite{Musuvathi2008} could be used to
+detect unknown bugs, which could then be passed to SLI to be
+automatically characterized and fixed.\editorial{I want to use the
+  phrase closed-loop here}
 
 \section{Building abstract read operations}
 \label{sect:build_state_machines}
 
 The first phase of our algorithm is to identify the abstract read
-operation which the program was performing when it crashed and to
-reify it.  We start by using a dynamic analysis on the DRS log to
-determine the first instruction where the program has definitely gone
-wrong, and to produce a direct explanation of the crash considering
-only that instruction.  This might, for instance, indicate that the
-program crashed because the instruction at address \verb|40037e|
-dereferenced register \verb|rdi| which contained an invalid pointer.
-This is referred to as the proximal cause of the crash.  We then
-expand upon this cause, finding earlier causes by translating it
-backwards through the captured log using a scheme which combines both
-static and dynamic analyses, producing a series of state machines
-which approximate steadily growing suffixes of the crashing thread's
-execution and which can be treated either as ``explanations'' of the
-crash or as logical operations performed by the thread towards the end
-of its life.
+operation which the program was performing when it crashed.  This is
+represented by a series of state machines, each corresponding to and
+approximating a fragment of the program starting at some instruction
+executed by the crashing thread and ending at the point of the crash.
+The state machine can be evaluated when one of the program's threads
+executes the starting instruction and predicts, given the state of
+memory and the thread's registers, whether the thread would crash if
+it were executed in isolation starting from that state.  In that
+sense, the state machine captures the part of the crashing thread's
+behavior which is most relevant to the bug which is to be fixed.
+
+The state machines can be regarded as small programs in a very simple
+graphical language, and the process of producing them as a kind of
+compilation.  The language has two basic components, states and
+directed edges.  States can be either internal, in which case they
+have two outgoing edges and a predicate which controls which is taken
+in any given evaluation, or terminal, in which case they have no
+outgoing edges and are labelled with either \verb|crash| or
+\verb|No crash|.  Edges link states, and are labelled with a list of
+store operations.  The predicates for internal states, and the address
+and value of store operations, are represented in a simple expression
+language.  This expression language has many of the usual operators,
+such as \verb|+| and \verb|==|, from C-like languages, with the usual
+semantics, and a few simple functions such as \verb|BadAddr| (which
+tests whether a pointer can be safely dereferenced) and \verb|CondEq|
+(which takes an x86 \verb|eflags| condition code word and checks
+whether the Z flag is set, indicating that the values compared were
+equal).  It also has forms for examining registers, such as \verb|rax|
+or \verb|rsp|, and for loading values from memory.
+
+Figure~\ref{fig:state_machines:a} shows the state machine generated
+for instruction \verb|A| in figure~\ref{fig:broken_privatize}, and
+illustrates most of the important points of the scheme.  Starting from
+the top of the diagram, the program issues the store
+\verb|load(global1@A) -> (rsp)|, which corresponds to instruction
+\verb|B| and indicates that the value loaded from \verb|global1| at
+instruction \verb|A| is stored in the memory location pointed at by
+register \verb|rsp|.  The state machine then evaluates
+\verb|load(global1@A) == 0| and goes left if the value is false
+(corresponding to the branch at instruction \verb|D| being taken) or
+right if it is true (corresponding to the branch at \verb|D| not being
+taken).  In either case, it performs one final test on the contents of
+memory, with the result determining whether or not the program
+crashes.  The remainder of this section details our algorithm for
+producing these state machines automatically.
 
 \begin{figure*}
  \begin{subfloat}
-  \begin{minipage}{90mm}
+  \begin{minipage}{80mm}
 \begin{verbatim}
 A: mov (global1) -> %rax
 B: mov %rax -> (%rsp)
@@ -209,7 +240,7 @@ K: ret
   \caption{Thread 1}
  \end{subfloat}
  \begin{subfloat}
-  \begin{minipage}{90mm}
+  \begin{minipage}{80mm}
 \begin{verbatim}
 V: mov &struct1 -> (variable1)
 W: mov &variable1 -> (global1)
@@ -225,18 +256,24 @@ Z: jmp V
   \end{minipage}
   \caption{Thread 2}
  \end{subfloat}
- \caption{A buggy example of the privatize synchronization pattern.}
+ \caption{A buggy example of the privatize synchronization pattern.
+   The author of thread 2 intended variable1 to be private after X,
+   and so de-initialized it at Y, but thread 1 caches a pointer to it
+   in a register at A which prevents it from being properly
+   privatized.  This leads to a bug: if A happens before X and Y
+   happens before G, rdx will contain a bad pointer at instruction J,
+   leading to an immediate crash.}
  \label{fig:broken_privatize}
 \end{figure*}
 
 \begin{figure*}[t]
-\subfigure[Instruction A]{\includegraphics[scale=0.3]{diagrams/statementA.pdf}
+\subfigure[Instruction A]{\includegraphics[scale=0.29]{diagrams/statementA.pdf}
   \label{fig:state_machines:a}}
-\subfigure[Instruction B]{\includegraphics[scale=0.3]{diagrams/statementB.pdf}
+\subfigure[Instruction B]{\includegraphics[scale=0.29]{diagrams/statementB.pdf}
   \label{fig:state_machines:b}}
-\subfigure[Instruction C]{\includegraphics[scale=0.3]{diagrams/statementC.pdf}
+\subfigure[Instruction C]{\includegraphics[scale=0.29]{diagrams/statementC.pdf}
   \label{fig:state_machines:c}}
-\subfigure[Instruction D]{\includegraphics[scale=0.3]{diagrams/statementD.pdf}
+\subfigure[Instruction D]{\includegraphics[scale=0.29]{diagrams/statementD.pdf}
   \label{fig:state_machines:d}}
 \subfigure[Instruction E]{\includegraphics[scale=0.3]{diagrams/statementE.pdf}
   \label{fig:state_machines:e}}
@@ -246,27 +283,13 @@ Z: jmp V
   \label{fig:state_machines:g}}
 \subfigure[Instruction H]{\includegraphics[scale=0.3]{diagrams/statementH.pdf}
   \label{fig:state_machines:h}}
-\subfigure[Instruction J]{\includegraphics[scale=0.3]{diagrams/statementJ.pdf}
+\subfigure[Instruction J, the proximal
+  cause]{\includegraphics[scale=0.3]{diagrams/statementJ.pdf}
   \label{fig:state_machines:j}}
-\caption{State machines produced for the example program}
+\caption{State machines produced for the example program.  Internal states are
+  indicated by diamonds, terminal states by ovals, and edges by lines.}
 \label{fig:state_machines}
 \end{figure*}
-
-We use a running example, shown in figure~\ref{fig:broken_privatize},
-to illustrate some of the details of our approach.  The example shows
-a buggy instance of the common structure privatization pattern in an
-x86-like assembly language.  Thread 2 initializes (\verb|V|) and
-publishes (\verb|W|) a structure, does some unrelated work, and then
-attempts to privatize (\verb|X|) and de-initialize (\verb|Y|) the
-structure.  Meanwhile, thread 1 loads the pointer published by thread
-2 (\verb|A|), checks whether it is valid (\verb|B|, \verb|C| and
-\verb|D|), and, if it is not, loads a fallback version (\verb|E|),
-before attempting to use it (\verb|F| through \verb|J|).  This will
-lead to a crash if instructions \verb|X| and \verb|Y| occur between
-instructions \verb|A| and \verb|G|, as in that case \verb|rdx| will
-contain a bad pointer at instruction \verb|J|, which will cause an
-immediate crash.  Figure~\ref{fig:state_machines} then shows some of
-the state machine generated by our algorithm.
 
 \subsection{The proximal cause}
 \label{sect:prox_cause}
@@ -286,11 +309,8 @@ which provides a more accurate starting point for the rest of the
 analysis.  We have implemented a simple use-after-free detector as
 part of our prototype; combining this with other forms of analysis or
 with application-specific knowledge would be straightforward, and
-would allow other classes of bugs to be detected.
-
-The result of this initial analysis is generally a single-state state
-machine which captures the reason for the crash using only information
-which is available at the instruction on which the error is detected;
+would allow other classes of bugs to be detected.  The result of this
+initial analysis is generally a state with only one internal state;
 for the example, it is shown in figure~\ref{fig:state_machines:j}.
 
 \subsection{Deriving earlier state machines}
@@ -298,20 +318,20 @@ This proximal cause is accurate but not, by itself, sufficient to
 derive a fix, as by the time the faulty instruction is executed it is
 usually too late to attempt to fix it.  It is therefore useful to move
 the expression backwards through the captured execution, and hence to
-determine an equivalent expression which can be evaluated earlier in
-the execution.  We do this inductively, moving back one instruction at
-a time through the DRS log.  There are three main classes of relevant
-instructions: register-register arithmetic instructions, memory
-accesses, and branches; we consider each in turn (more complicated
-instructions can generally be treated as combinations of these basic
-classes).
+determine an equivalent expression which can be evaluated earlier.  We
+do this inductively, moving back one instruction at a time through the
+DRS log and deriving a state machine for each.  There are three main
+classes of relevant instructions: register-register arithmetic
+instructions, branches, and memory accesses; we consider each in turn
+(more complicated instructions can generally be treated as
+combinations of these basic classes).
 
 \subsubsection{Arithmetic instructions}
 
-We assume, by induction, that we have a state machine corresponding to
-the point immediately after the instruction in question, and we wish
-to construct one corresponding to a point immediately before it.  If
-the register-register arithmetic instruction is regarded as a
+We assume that we have a state machine corresponding to the point
+immediately after the instruction in question, and we wish to
+construct one corresponding to a point immediately before it.  If the
+register-register arithmetic instruction is regarded as a
 transformation on the program's register state then this can be
 accomplished by applying the same transformation to the given state
 machine.  For instance, in the example in
@@ -336,42 +356,44 @@ instructions.\editorial{The reason this works is something to do with
 
 \subsubsection{Branch instructions}
 \label{sect:branch_instrs}
-Branch instructions also require care, as they may involve parts of
+Branch instructions require more care, as they may involve parts of
 the program which were not used in the captured execution and for
-which no state machines will be available.\editorial{SSP}
-
-One simple approach would be to assume that taking such branches is
-sufficient to avoid the crash.  Unfortunately, this is often not true:
-there are often irrelevant and distracting branches in the region of
-code to be examined, and they must be eliminated.  Consider, for
+which no state machines will be available.  This would be simple if we
+could assume that any change to the program's control flow would be
+sufficient to avoid the bug, but this is not the case.  Consider, for
 instance, this example:
 
 \begin{verbatim}
 1   p = global_ptr;
-2   assert(p->foo);
-3   if (p->need_churn)
-4       churn(p->bar->bazz);
+2   if (!p->foo)
+3       abort();
+4   if (p->need_churn)
+5       churn(p->bar->bazz);
 \end{verbatim}
 
-Assume that the program was observed to crash on line 4 because some
+Assume that the program was observed to crash on line 5 because some
 other thread was updating the structure and set \verb|need_churn|
-before setting \verb|bar|.  Presumably, the assertion on line 2 was
-true in this instance, and so naively assuming that any changes to the
-control flow are sufficient to avoid a repeat of the crash would cause
-SLI to attempt to fix it by making the assertion always evaluate to
-false.  This is unlikely to lead to an acceptable solution.
+before setting \verb|bar|.  \verb|foo| must have been true on line 2,
+as otherwise the program would have aborted on line \verb|3|, and so
+if one were to assume that any changes to the program's control flow
+would be sufficient to avoid the bug then one would have to conclude
+that ensuring that this code only ran when \verb|foo| is false would
+fix the bug.  This is unlikely to lead to a reasonable fix.
 
 We determine the effects of unexecuted code using a simple static
-analysis.  The first stage of this analysis is to build an
-approximation of the program's control flow graph starting from the
-branch instruction and stopping when we encounter an instruction for
-which we already have a state machine\footnote{We also impose a limit
+analysis.  The first stage of this analysis is to build a fragment of
+the program's static control flow graph starting from the branch
+instruction and stopping when we encounter an instruction for which a
+state machine has already been derived\footnote{We also impose a limit
   on the number of instructions examined, but this was not reached in
-  any of our experiments.}.  These state machines can then be
-propagated backwards through the graph exactly as if the instructions
-had been executed in the dynamic trace, allowing us to assign a state
-machine to the root of the graph and hence to the original branch
-instruction.
+  any of our experiments.}.  We then eliminate any loops in the graph
+using a scheme described in \S\ref{sect:loops} and so produce a DAG of
+instructions rooted at the branch instruction and whose leaves are the
+state machines which have already been derived.  These state machines
+can then be propagated backwards through the graph using exactly the
+same inductive algorithm as we use to move backwards through the
+dynamic trace, allowing state machines to be derived for the internal
+nodes of the graph and ultimately for the original state machine.
 
 \subsubsection{Memory accesses}
 
@@ -477,6 +499,7 @@ step can be seen as pruning the set of paths considered to be only
 those which are sufficiently similar to the captured execution.
 
 \subsubsection{Loops}
+\label{sect:loops}
 Loops also complicate this simple algorithm.  We avoid the problem by
 breaking them, removing a subset of the graph's edges so as to
 eliminate the loop.  We choose edges to remove based on two
@@ -496,7 +519,7 @@ broken in the usual way, and so this is sufficient to ensure that any
 static instruction issues at most one dynamic load and hence that load
 labels refer to at most one load.
 
-\section{Identifying relevant structures}
+\section{Locating relevant structures}
 
 Once the abstract read operation has been suitably characterised, the
 next step is to discover memory structures to which it can be applied.
@@ -819,9 +842,9 @@ figure~\ref{fig:example_specialisations}, one corresponding to the
 branch-taken case and one to the branch-not-taken one.
 
 \begin{figure}[thb]
-\subfigure[Branch taken]{\includegraphics[scale=0.35]{diagrams/specialise_1.pdf}
+\subfigure[Branch taken]{\includegraphics[scale=0.34]{diagrams/specialise_1.pdf}
   \label{fig:specialise_taken}}
-\subfigure[Branch not taken]{\includegraphics[scale=0.35]{diagrams/specialise_2.pdf}
+\subfigure[Branch not taken]{\includegraphics[scale=0.34]{diagrams/specialise_2.pdf}
   \label{fig:specialise_not_taken}}
 \caption{Results of specialising figure~\ref{fig:state_machines:f}}
 \label{fig:example_specialisations}
@@ -885,7 +908,7 @@ bugs and their standard fixes).\editorial{This could do with being a
 
 \begin{figure}
   \begin{subfloat}
-    \begin{minipage}{90mm}
+    \begin{minipage}{60mm}
 \begin{verbatim}
 V: acquire_and_jmp V'1
 W: mov &variable1 -> (global1)
@@ -898,7 +921,7 @@ Z: jmp V
     \end{minipage}
   \end{subfloat}
   \begin{subfloat}
-    \begin{minipage}{90mm}
+    \begin{minipage}{60mm}
 \begin{verbatim}
 V'1: mov &struct1 -> (variable1)
 V'2: release()
@@ -907,7 +930,7 @@ V'3: jmp W
     \end{minipage}
   \end{subfloat}
   \begin{subfloat}
-    \begin{minipage}{90mm}
+    \begin{minipage}{50mm}
 \begin{verbatim}
 Y'1:  mov $0 -> (variable1)
 Y'2:  release()
@@ -926,9 +949,9 @@ shown in figure~\ref{fig:patch1}, before extending it to cover the
 unsafe region and producing a final patch set shown in
 figure~\ref{fig:patch2}.
 
-\begin{figure}[h]
+\begin{figure}
   \begin{subfloat}
-    \begin{minipage}{90mm}
+    \begin{minipage}{80mm}
 \begin{verbatim}
 V: acquire_and_jmp V'1
 W: mov &variable1 -> (global1)
@@ -941,7 +964,7 @@ Z: jmp V
     \end{minipage}
   \end{subfloat}
   \begin{subfloat}
-    \begin{minipage}{90mm}
+    \begin{minipage}{80mm}
 \begin{verbatim}
 V'1: mov &struct1 -> (variable1)
 V'2: release()
@@ -950,7 +973,7 @@ V'3: jmp W
     \end{minipage}
   \end{subfloat}
   \begin{subfloat}
-    \begin{minipage}{90mm}
+    \begin{minipage}{80mm}
 \begin{verbatim}
 Y'1:  mov $0 -> (variable1)
 Y'2:  release()
@@ -959,7 +982,7 @@ Y'3:  jmp U
     \end{minipage}
   \end{subfloat}
   \begin{subfloat}
-    \begin{minipage}{90mm}
+    \begin{minipage}{80mm}
 \begin{verbatim}
 Y'' : acquire_and_jmp Y'1'
 Y'1': mov $0 -> (variable1)
