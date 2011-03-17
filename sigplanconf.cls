@@ -284,7 +284,7 @@
   \fi
   \PassOptionsToClass{twoside,onecolumn}{article}
 \else
-  \PassOptionsToClass{twoside,twocolumn}{article}
+  \PassOptionsToClass{twoside,twocolumn,letter}{article}
 \fi
 \LoadClass{article}
 

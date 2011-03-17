@@ -1,8 +1,13 @@
-\documentclass[10pt,twocolumn,preprint,natbib,authoryear]{sigplanconf}
+\documentclass[10pt,letter,twocolumn]{article}
+\setlength{\textheight}{9in}
+\setlength{\textwidth}{6.5in}
+\setlength{\headheight}{0in}
+\setlength{\headsep}{0in}
+\setlength{\topskip}{0in}
 \usepackage{verbatim}
 \usepackage{color}
 \usepackage{graphicx}
-\bibpunct{[}{]}{,}{a}{}{;}
+%\bibpunct{[}{]}{,}{a}{}{;}
 
 \usepackage{amsmath}
 \usepackage{subfigure}
@@ -29,18 +34,18 @@
 
 \begin{document}
 
-\conferenceinfo{SOSP 2011}{date, City.} 
-\copyrightyear{2011} 
-\copyrightdata{[to be supplied]} 
+%\conferenceinfo{SOSP 2011}{date, City.} 
+%\copyrightyear{2011} 
+%\copyrightdata{[to be supplied]} 
 
-\titlebanner{Submitted to SOSP 2011}        % These are ignored unless
+%\titlebanner{Submitted to SOSP 2011}        % These are ignored unless
 %\preprintfooter{short description of paper}   % 'preprint' option specified.
 
 \title{Speculative Lock Insertion}
 %\subtitle{Subtitle Text, if any}
 
 % For double-blind reviewing:
-\authorinfo{}{}{}
+%\authorinfo{}{}{}
 %\authorinfo{Name1}
 %           {Affiliation1}
 %           {Email1}
@@ -999,13 +1004,15 @@ patterns.
 Name of test & Nature                 & Number of & Size of logfile & Number of & Total number of \\
              &                        & fixes     &                 & state machines & state machine states \\ \hline
 toctou       & Synthetic TOCTOU race  & 1        & 28MiB   & 9 & 19\\
-twovar       & Synthetic two-variable atomicity & 1        & 31MiB   & 13 & 31\\
-             & violation    &          & \\
-publish      & Synthetic broken publish pattern & 2        & 31MiB   & 8 & 24 \\
-privatize    & Synthetic broken privatize pattern & 2        & 43MiB   & 9 & 25 \\
+twovar       & Synthetic two-variable & 1        & 31MiB   & 13 & 31\\
+             & atomicity violation    &          & \\
+publish      & Synthetic broken       & 2        & 31MiB   & 8 & 24 \\
+             & publish pattern        & \\
+privatize    & Synthetic broken       & 2        & 43MiB   & 9 & 25 \\
+             & privatize pattern      & \\
 \hline
-glibc        & Kernel of a genuine atomicity & 8        & 48MiB   & 19 & 139\\
-             & violation    &          & \\
+glibc        & Kernel of a genuine    & 8        & 48MiB   & 19 & 139\\
+             & atomicity violation    &          & \\
 \hline
 thunderbird  & Genuine TOCTOU         & 1        & 758MiB  & 7 & 15
 \end{tabular}
@@ -1201,32 +1208,32 @@ additional complexity.
 
 \begin{figure*}
   \begin{subfloat}
-    \begin{minipage}{57mm}
+    \begin{minipage}{52mm}
 \begin{verbatim}
 _Unwind_ForcedUnwind() {
-    if (forcedunwind == NULL)
-        pthread_cancel_init();
-    forcedunwind();
+   if (forcedunwind == NULL)
+      pthread_cancel_init();
+   forcedunwind();
 }
 pthread_cancel_init() {
-    if (done_init) return;
-    forcedunwind =
-      _forcedunwind_impl;
-    done_init = 1;
+   if (done_init) return;
+   forcedunwind =
+     _forcedunwind_impl;
+   done_init = 1;
 }
 \end{verbatim}
     \end{minipage}
     \caption{Before optimizations}
   \end{subfloat}
   \begin{subfloat}
-    \begin{minipage}{57mm}
+    \begin{minipage}{52mm}
 \begin{verbatim}
   _Unwind_ForcedUnwind() {
 1:  l = forcedunwind;
 2:  if (l == NULL &&
 3:      done_init) {
 4:    forcedunwind = l =
-5:         _forcedunwind_impl;
+5:       _forcedunwind_impl;
 6:    done_init = 1;
 7:  }
 8:  l();
@@ -1236,7 +1243,7 @@ pthread_cancel_init() {
     \caption{After optimizations}
   \end{subfloat}
   \begin{subfloat}
-    \begin{minipage}{40mm}
+    \begin{minipage}{35mm}
 \begin{verbatim}
     while (1) {
 10:   pthread_barrier_wait();
@@ -1472,7 +1479,7 @@ they provide a useful basis for ongoing work to extend the set of
 situations in which they are applicable.\editorial{Wibble wibble
   wibble}
 
-\bibliographystyle{eurosys}
+\bibliographystyle{abbrv}
 
 \bibliography{library}
 
