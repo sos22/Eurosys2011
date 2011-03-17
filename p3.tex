@@ -196,19 +196,19 @@ outgoing edges and are labelled with either \verb|crash| or
 \verb|No crash|.  Edges link states, and are labelled with a list of
 store operations.  The predicates for internal states, and the address
 and value of store operations, are represented in a simple expression
-language.  This expression language has many of the usual operators,
-such as \verb|+| and \verb|==|, from C-like languages, with the usual
-semantics, and a few simple functions such as \verb|BadAddr| (which
-tests whether a pointer can be safely dereferenced) and \verb|CondEq|
-(which takes an x86 \verb|eflags| condition code word and checks
-whether the Z flag is set, indicating that the values compared were
-equal).  It also has forms for examining registers, such as \verb|rax|
-or \verb|rsp|, and for loading values from memory.
+language which has forms for examining registers, such as \verb|rax|
+or \verb|rsp|, and for examining values loaded from memory.  It also
+has the usual operators from C-like languages, like \verb|+| and
+\verb|==|, which have the standard semantics, and a few simple
+functions such as \verb|BadAddr| (which tests whether a pointer can be
+safely dereferenced) and \verb|CondEq| (which takes an x86
+\verb|eflags| condition code word and checks whether the Z flag is
+set, indicating that the values compared were equal).
 
 Figure~\ref{fig:state_machines:a} shows the state machine generated
 for instruction \verb|A| in figure~\ref{fig:broken_privatize}, and
 illustrates most of the important points of the scheme.  Starting from
-the top of the diagram, the program issues the store
+the top of the diagram, the state machine issues the store
 \verb|load(global1@A) -> (rsp)|, which corresponds to instruction
 \verb|B| and indicates that the value loaded from \verb|global1| at
 instruction \verb|A| is stored in the memory location pointed at by
@@ -294,8 +294,8 @@ Z: jmp V
 \subsection{The proximal cause}
 \label{sect:prox_cause}
 The first step is to locate the first point in the log at which
-something has definitely gone wrong, and hence to obtain the most
-direct cause of the crash and to nominate one thread as being directly
+something has definitely gone wrong, and hence to obtain a direct
+cause of the crash and to nominate one thread as being directly
 responsible for it.  A naive approach would simply use the point at
 which the program crashed.  In principle, this is always correct, and
 for some simple bugs, such as \verb|NULL|-dereferences or assertion
@@ -310,8 +310,9 @@ analysis.  We have implemented a simple use-after-free detector as
 part of our prototype; combining this with other forms of analysis or
 with application-specific knowledge would be straightforward, and
 would allow other classes of bugs to be detected.  The result of this
-initial analysis is generally a state with only one internal state;
-for the example, it is shown in figure~\ref{fig:state_machines:j}.
+initial analysis is generally a state with only one internal state,
+referred to as the proximal cause; for the example, it is shown in
+figure~\ref{fig:state_machines:j}.
 
 \subsection{Deriving earlier state machines}
 This proximal cause is accurate but not, by itself, sufficient to
@@ -354,6 +355,55 @@ instructions.\editorial{The reason this works is something to do with
   into a sequence of micro-operations which can be used as input to
   this process.} 
 
+\subsubsection{Memory accesses}
+
+Memory accesses are more difficult to handle, for three main reasons:
+
+\begin{itemize}
+\item The pointer aliasing problem\needCite{}: given a load and a
+  store, it is not always clear whether they access the same memory
+  location.
+\item Non-determinism: due to the actions of other threads, it cannot
+  be assumed that loading the same location twice will produce the
+  same result.
+\item Temporality: the exact order in which loads and stores are
+  issued is often important in the kinds of synchronisation bugs which
+  SLI targets, but the transformation-based approach used for
+  arithmetic instructions does not preserve it.
+\end{itemize}
+
+We avoid these problems by leaving memory accesses explicit in the
+state machines in most cases.  Because the memory accessing
+instructions remain explicit in the state machines, we do not need to
+be able to determine whether two pointers alias.  This is fortunate,
+as doing so is difficult, even in a more conventional model checking
+environment where higher-level information and programmer annotations
+are available\needCite{}.
+
+Consider again the example.  We have already illustrated how to
+generate state machines for instructions \verb|J| and \verb|H|.  The
+next instruction for which a machine must be derived is \verb|G|, as
+that is immediately before \verb|H|.  This is simply the machine for
+\verb|H| with \verb|rdx| replaced with \verb|load(rcx@G)|, because
+instruction \verb|G| replaces \verb|rdx| with a load of the memory
+location pointed at by \verb|rcx|.  This is shown in
+figure~\ref{fig:state_machines:g}.  Likewise, instruction \verb|F|
+replaces \verb|rcx| with the contents of the memory location pointed
+at by \verb|rsp|, and so the state machine for instruction \verb|F| is
+as shown in figure~\ref{fig:state_machines:f}.
+
+Accesses to the local stack are an important exception.  Cross-thread
+accesses to the stack are extremely rare, while intra-thread accesses
+are extremely common, and so treating every stack access as being
+potentially involved in a race significantly complicates the analysis
+for little gain in power.  We therefore use a simple heuristic, based
+on the contents of the DRS log, to attempt to resolve these accesses.
+When we encounter a store instruction, we check through the DRS log to
+determine whether it stored to the stack, and, if it did, which loads
+then loaded the stored value.  If any of those loads occur in the
+state machine after the store instruction then we assume that they
+will always load the stored value, and so eliminate them.
+
 \subsubsection{Branch instructions}
 \label{sect:branch_instrs}
 Branch instructions require more care, as they may involve parts of
@@ -376,85 +426,52 @@ other thread was updating the structure and set \verb|need_churn|
 before setting \verb|bar|.  \verb|foo| must have been true on line 2,
 as otherwise the program would have aborted on line \verb|3|, and so
 if one were to assume that any changes to the program's control flow
-would be sufficient to avoid the bug then one would have to conclude
-that ensuring that this code only ran when \verb|foo| is false would
-fix the bug.  This is unlikely to lead to a reasonable fix.
+would be sufficient to avoid the bug then one would conclude that
+ensuring that this code only ran when \verb|foo| is false would fix
+the bug.  This is unlikely to lead to an effective solution.
 
 We determine the effects of unexecuted code using a simple static
-analysis.  The first stage of this analysis is to build a fragment of
-the program's static control flow graph starting from the branch
-instruction and stopping when we encounter an instruction for which a
-state machine has already been derived\footnote{We also impose a limit
-  on the number of instructions examined, but this was not reached in
-  any of our experiments.}.  We then eliminate any loops in the graph
-using a scheme described in \S\ref{sect:loops} and so produce a DAG of
-instructions rooted at the branch instruction and whose leaves are the
+analysis.  We first build a fragment of the program's static control
+flow graph starting from the branch instruction and stopping when we
+encounter an instruction for which a state machine has already been
+derived (or an indirect branch which we cannot predict; see
+\S\ref{sect:indirect_branches})\footnote{We also impose a limit on the
+  number of instructions examined, but this was not reached in any of
+  our experiments.}.  We then eliminate any loops in the graph using a
+scheme described in \S\ref{sect:loops} and so produce a DAG of
+instructions rooted at the branch instruction and whose leaves are
 state machines which have already been derived.  These state machines
 can then be propagated backwards through the graph using exactly the
 same inductive algorithm as we use to move backwards through the
 dynamic trace, allowing state machines to be derived for the internal
 nodes of the graph and ultimately for the original state machine.
 
-\subsubsection{Memory accesses}
-
-Memory accesses are more difficult to handle, for three main reasons:
-
-\begin{itemize}
-\item The pointer aliasing problem\needCite{}: given a load and a
-  store, it is not always clear whether they access the same memory
-  location.
-\item Non-determinism: due to the actions of other threads, it cannot
-  be assumed that loading the same location twice will produce the
-  same result.
-\item Temporality: the exact order in which loads and stores are
-  issued is often important in the kinds of synchronisation bugs which
-  SLI targets, but the transformation-based approach used for
-  arithmetic instructions does not preserve it.
-\end{itemize}
-
-We avoid these problems by leaving memory accesses explicit in the
-state machines.  Loads are represented by special \verb|load|
-expressions, tagged with the instruction which issued them, while
-\verb|store|s are listed on the edges of the state machines.
-
-Because the memory accessing instructions remain explicit in the state
-machines, we do not need to be able to determine whether two pointers
-alias.  This is fortunate, as doing so is difficult, even in a more
-conventional model checking environment where higher-level information
-and programmer annotations are available\needCite{}.
-
-Accesses to the local stack are an important exception.  Cross-thread
-accesses to the stack are extremely rare, while intra-thread accesses
-are extremely common, and so treating every stack access as being
-potentially involved in a race significantly complicates the analysis
-for little gain in power.  We therefore use a simple heuristic, based
-on the contents of the DRS log, to attempt to resolve these accesses.
-When we encounter a store instruction, we check through the DRS log to
-determine whether it stored to the stack, and, if it did, which loads
-then loaded the stored value.  If any of those loads occur in the
-state machine after the store instruction then we assume that they
-will always load the stored value, and so eliminate them.
-
-\subsubsection{Example}
-
-In the example, the next instruction which must be assigned a state
-machine is \verb|D: je F|, as that preceded instruction \verb|F| in
-the captured trace.  It is followed by instruction \verb|F|, which
-already has a state machine, and \verb|E|, which does not, and
-\verb|E| is followed by \verb|F|.  The CFG therefore contains just
-three nodes, representing \verb|D|, \verb|E|, and \verb|F|, with edges
-from \verb|D| to \verb|E| and \verb|F| and one from \verb|E| to
-\verb|F|\editorial{Diagram?}.  We then proceed to derive a state
-machine for \verb|E|, which is a simple store to a stack location.
-Assuming that this store was ever executed in the captured execution,
-the stack resolution heuristic will predict that the load at \verb|F|
-will load the stored value.  The load will therefore be eliminated,
-and so the state machine for instruction \verb|E| will be as shown in
+In the example, instruction \verb|F| could have been preceded by
+either \verb|D| or \verb|E|.  Assume that in the observed crash it was
+preceded by \verb|D| (or, to put it another way, that the branch at
+\verb|D| was taken).  \verb|D| is a branch instruction, and,
+statically, can be followed by either \verb|E| or \verb|F|.  \verb|E|
+is always followed by \verb|F|, and a state machine has already been
+derived for \verb|F|.  The CFG therefore contains just three nodes,
+representing \verb|D|, \verb|E|, and \verb|F|, with edges from
+\verb|D| to \verb|E| and \verb|F| and one from \verb|E| to \verb|F|.
+We now search the CFG for any node which does not have a state machine
+but whose successors do; in this case, only \verb|E| satisfies these
+constraints, and so we will derive a state machine for it first.
+\verb|E| is a store to a stack location, and so the stack resolution
+heuristic is triggered.  Assuming that the store was ever executed in
+the captured execution, it will predict that the load at \verb|F| will
+load the stored value.  The load will therefore be eliminated, and so
+the state machine for instruction \verb|E| will be as shown in
 figure~\ref{fig:state_machines:e}.  It is now possible to combine the
 machines for \verb|E| and \verb|F| to produce one for \verb|D|.  This
-is illustrated in figure \ref{fig:state_machines:d}.
-Backtracking further to instruction \verb|A| will then produce the
-state machine illustrated in figure \ref{fig:state_machines:a}.
+is illustrated in figure \ref{fig:state_machines:d} (the left-hand
+branch is the machine for instruction \verb|F| and the right-hand one
+that for instruction \verb|E|).  The state machines for instructions
+\verb|C|, \verb|B| and \verb|A| can now be derived using the
+mechanisms already illustrated, producing the results shown in
+figures~\ref{fig:state_machines:c}, \ref{fig:state_machines:b} and
+\ref{fig:state_machines:a}.
 
 Note that identical state machines would have been derived if the
 program had not taken the branch immediately before crashing (which
@@ -473,6 +490,7 @@ independent phases would lose this property, and result in far less
 accurate characterizations.\editorial{ref phase order problem?}
 
 \subsubsection{Indirect branches}
+\label{sect:indirect_branches}
 Indirect branches, and any other branches which compute their target
 dynamically, pose an additional challenge here, as it is often
 difficult to statically predict the target of the branch.  The most
