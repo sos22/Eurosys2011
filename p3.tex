@@ -755,7 +755,7 @@ dynamic instance of instructions \verb|V|, \verb|W|, \verb|X|, and
 \includegraphics[scale=0.3]{diagrams/specialise_3.pdf}
 \caption{Results of specialising figure~\ref{fig:state_machines:a}}
 \label{fig:specialised_example_machine}
-\end{figure}.
+\end{figure}
 
 We now move on to identifying the unsafe regions in the log.  This
 requires us to evaluate the state machine before and after every
@@ -769,18 +769,18 @@ sets to be protected are simply:
 \item All of the loads issued by thread 1 which are mentioned in the
   state machine.  In this case, there are only two; \verb|A| and
   \verb|G|.
-\item A singleton set containing \verb|V|.
-\item A singleton set containing \verb|W|.
-\item A singleton set containing \verb|X|.
-\item A singleton set containing \verb|Y|.
+\item The instruction \verb|V|.
+\item The instruction \verb|W|.
+\item The instruction \verb|X|.
+\item The instruction \verb|Y|.
 \end{itemize}
 
-We must now construct the code patches for these sets.  In this case,
-none of the sets' control flow graphs will overlap, and so there will
-be one patch for each set.  For the singleton sets, the patch will
-contain a lock operation, the instruction in the set, an unlock
-operation and a branch back to the original code.  For the larger set,
-the patch will contain the lock and unlock operations, the
+We must now construct appropriate code patches.  In this case, none of
+the regions' control flow graphs will overlap, and so there will be
+one patch for each.  For the single-instruction regions, the patch
+will contain a lock operation, the instruction in the set, an unlock
+operation, and a branch back to the original code.  For the load
+region, the patch will contain the lock and unlock operations, the
 instructions from \verb|A| to \verb|G|, and a branch back to
 instruction \verb|H| in the original code.  Note several important
 properties of this patch:
@@ -789,7 +789,7 @@ properties of this patch:
 \item When the branch instruction at \verb|D| is duplicated, it is
   rewritten such that both the taken and untaken exits point into the
   new patch, rather than into the original code.
-\item The instruction which crashed, \verb|J|, is not included in the
+\item The instruction which crashed, \verb|J|, is not included in any
   critical region.  By the time instruction \verb|J| executes, the
   race has already happened, and so it is too late to try to prevent
   it and protecting that instruction would not be helpful.
@@ -798,7 +798,7 @@ properties of this patch:
   instruction \verb|A| it will not be affected by the patch.  In
   particular, there is no danger of the lock being released without
   first being acquired.  However, the program will not be protected
-  against any possible races.
+  against any other possible races.
 \item The fix is correct: it completely eliminates the observed bug.
 \end{itemize}
 
@@ -833,34 +833,35 @@ i.e. whenever thread 2 is between instructions \verb|Y| and \verb|V|.
 SLI therefore produces alternative sets of instructions to protect:
 
 \begin{itemize}
-\item The load set will contain just the load at \verb|G|.
+\item The only load instruction to be protected is \verb|G|.
 \item There will be an unsafe region from \verb|Y| to \verb|V|. 
-\item There will be singleton store sets \verb|V| and \verb|Y|.  Our
-  prototype will recognise that these are redundant because they are
-  covered by the unsafe region and eliminate them before proceeding
-  any further.
+\item There will be single-instruction regions for \verb|V| and
+  \verb|Y|.  Our prototype will recognise that these are redundant
+  because they are covered by the unsafe region and eliminate them
+  before proceeding any further.
 \end{itemize}
 
-The load set will be instantiated into a trivial single-instruction
-patch, as the store sets were in the previous example.  We also
-construct a patch for the code in figure~\ref{fig:broken_privatize}'s
-thread 2 which duplicates instructions \verb|Y|, \verb|Z|, and
-\verb|V|, plus all of the instructions between \verb|Y| and \verb|Z|,
-and which drops the lock and branches back to instruction \verb|W| at
-the end.  These patches would also fix the bug.  Furthermore, assuming
-that there are only a small number of instructions between \verb|Y|
-and \verb|Z|, they will be preferred by the prioritisation heuristic,
-because they require fewer critical sections.
+The first region will be instantiated into a trivial
+single-instruction patch, as the store instructions were in the
+previous example.  We also construct a patch for the code in
+figure~\ref{fig:broken_privatize}'s thread 2 which duplicates
+instructions \verb|Y|, \verb|Z|, and \verb|V|, plus all of the
+instructions between \verb|Y| and \verb|Z|, and which drops the lock
+and branches back to instruction \verb|W| at the end.  These patches
+would also fix the bug.  Furthermore, assuming that there are only a
+small number of instructions between \verb|Y| and \verb|Z|, they will
+be preferred by the prioritisation heuristic, because they require
+fewer critical sections.
 
-It could be argued, however, that this smaller fix is inferior to the
-larger alternative, despite completely eliminating the crash and
-potentially imposing lower overhead, as it is less ``sympathetic'' to
-the existing structure of the program.  The author of thread 2 had
-presumably intended to privatize the structure at instruction
-\verb|X|, and so might reasonably have defined a ``correct'' fix to be
-one which ensures correct privatization, a goal which is achieved by
-the first fix but not by the second.  SLI, by contrast, has no notion
-of intended behavior, or indeed any form of good software engineering
+It could be argued that this smaller fix is inferior to the larger
+alternative, despite completely eliminating the crash and potentially
+imposing lower overhead, as it is less ``sympathetic'' to the existing
+structure of the program.  The author of thread 2 had presumably
+intended to privatize the structure at instruction \verb|X|, and so
+might reasonably have defined a ``correct'' fix to be one which
+ensures correct privatization, a goal which is achieved by the first
+fix but not by the second.  SLI, by contrast, has no notion of
+intended behavior, or indeed any form of good software engineering
 practice, and so selects its fix based on the more mundane concerns of
 avoiding the crash and minimizing the impact on performance.  This is
 both a strength and a weakness: a strength in that it increases the
@@ -916,9 +917,9 @@ Y'3:  jmp U
 It is instructive to consider what would have happened if the
 redundant singleton sections had not been eliminated.  In that case,
 SLI would have constructed patches for each of the singleton sets, as
-shown in figure~\ref{fig:patch1}, before attempting to produce a patch
-for the unsafe region.  The new patch will therefore include
-duplicates of these previous patches
+shown in figure~\ref{fig:patch1}, before extending it to cover the
+unsafe region and producing a final patch set shown in
+figure~\ref{fig:patch2}.
 
 \begin{figure}[h]
   \begin{subfloat}
@@ -987,7 +988,7 @@ so SLI optimises slightly by rewriting it to a simple \verb|jmp V'1|.
 
 This illustrates that the binary patching algorithm will perform
 correctly even in the presence of overlapping critical sections,
-although it may in some cases produce non-optimal synchronisation
+although it may in some cases produce less efficient synchronisation
 patterns.
 
 \section{Evaluation}
