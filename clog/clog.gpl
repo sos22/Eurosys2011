@@ -2,5 +2,5 @@ set terminal postscript eps enhanced
 set output "clog.eps"
 
 set size 0.5,0.5
-#set key 39,0.67
+set key off
 plot [] [0:] 'clog.dat' with yerrorlines

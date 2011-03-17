@@ -7,8 +7,8 @@
 \usepackage{amsmath}
 \usepackage{subfigure}
 
-\newcommand{\editorial}[1]{\textcolor{red}{\footnote{\textcolor{red}{#1}}}}
-%\newcommand{\editorial}[1]{}
+%\newcommand{\editorial}[1]{\textcolor{red}{\footnote{\textcolor{red}{#1}}}}
+\newcommand{\editorial}[1]{}
 \newcommand{\needCite}{\editorial{need cite}}
 \newcommand{\smh}[1]{\editorial{SMH says: #1}}
 
@@ -813,14 +813,14 @@ is not.  In that case, there will be two specialisations, shown in
 figure~\ref{fig:example_specialisations}, one corresponding to the
 branch-taken case and one to the branch-not-taken one.
 
-\begin{figure*}[thb]
+\begin{figure}[thb]
 \subfigure[Branch taken]{\includegraphics[scale=0.35]{diagrams/specialise_1.pdf}
   \label{fig:specialise_taken}}
 \subfigure[Branch not taken]{\includegraphics[scale=0.35]{diagrams/specialise_2.pdf}
   \label{fig:specialise_not_taken}}
 \caption{Results of specialising figure~\ref{fig:state_machines:f}}
 \label{fig:example_specialisations}
-\end{figure*}.
+\end{figure}
 
 The captured execution shows no writes to \verb|fallback|, and so the
 \verb|load| in figure~\ref{fig:specialise_not_taken} is replaced with
@@ -995,18 +995,16 @@ patterns.
 
 \begin{table*}
 \begin{tabular}{lllllll}
-Name of test & Nature                 & Number   & Size of & Number of      & Total number of state\\
-             &                        & of fixes & logfile & state machines & machine states\\ \hline
-toctou       & Synthetic TOCTOU       & 1        & 28MiB   & 9 & 19\\
-twovar       & Synthetic two-variable & 1        & 31MiB   & 13 & 31\\
-             & atomicity violation    &          & \\
-publish      & Synthetic broken       & 2        & 31MiB   & 8 & 24 \\
-             & publish pattern        &          & \\
-privatize    & Synthetic broken       & 2        & 43MiB   & 9 & 25 \\
-             & privatize pattern      &          & \\
+Name of test & Nature                 & Number of & Size of logfile & Number of & Total number of \\
+             &                        & fixes     &                 & state machines & state machine states \\ \hline
+toctou       & Synthetic TOCTOU race  & 1        & 28MiB   & 9 & 19\\
+twovar       & Synthetic two-variable atomicity & 1        & 31MiB   & 13 & 31\\
+             & violation    &          & \\
+publish      & Synthetic broken publish pattern & 2        & 31MiB   & 8 & 24 \\
+privatize    & Synthetic broken privatize pattern & 2        & 43MiB   & 9 & 25 \\
 \hline
-glibc        & Kernel of a genuine    & 8        & 48MiB   & 19 & 139\\
-             & atomicity violation    &          & \\
+glibc        & Kernel of a genuine atomicity & 8        & 48MiB   & 19 & 139\\
+             & violation    &          & \\
 \hline
 thunderbird  & Genuine TOCTOU         & 1        & 758MiB  & 7 & 15
 \end{tabular}
@@ -1016,7 +1014,7 @@ thunderbird  & Genuine TOCTOU         & 1        & 758MiB  & 7 & 15
 
 \begin{table*}
 \begin{tabular}{lllll}
-Name of test & Total            & Loading memory image & Replay engine    & Analysis\\ \hline
+Name of test & Total time taken & Loading initial memory image & Replaying logfile & All analysis phases \\ \hline
 toctou       & $ 0.51 \pm 0.01$ & $ 0.18 \pm 0.01$     & $ 0.19 \pm 0.00$ & $ 0.15 \pm 0.00$\\
 twovar       & $ 0.75 \pm 0.01$ & $ 0.18 \pm 0.01$     & $ 0.42 \pm 0.00$ & $ 0.14 \pm 0.00$\\
 publish      & $ 0.48 \pm 0.03$ & $ 0.18 \pm 0.02$     & $ 0.17 \pm 0.00$ & $ 0.13 \pm 0.00$\\
