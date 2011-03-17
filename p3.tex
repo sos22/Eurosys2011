@@ -373,12 +373,11 @@ Memory accesses are more difficult to handle, for three main reasons:
 \end{itemize}
 
 We avoid these problems by leaving memory accesses explicit in the
-state machines in most cases.  Because the memory accessing
-instructions remain explicit in the state machines, we do not need to
-be able to determine whether two pointers alias.  This is fortunate,
-as doing so is difficult, even in a more conventional model checking
-environment where higher-level information and programmer annotations
-are available\needCite{}.
+state machines in most cases, and so we do not need to be able to
+determine whether two pointers alias.  This is fortunate, as doing so
+is difficult, even in a more conventional model checking environment
+where higher-level information and programmer annotations are
+available\needCite{}.
 
 Consider again the example.  We have already illustrated how to
 generate state machines for instructions \verb|J| and \verb|H|.  The
@@ -457,22 +456,21 @@ derived for \verb|F|.  The CFG therefore contains just three nodes,
 representing \verb|D|, \verb|E|, and \verb|F|, with edges from
 \verb|D| to \verb|E| and \verb|F| and one from \verb|E| to \verb|F|.
 We now search the CFG for any node which does not have a state machine
-but whose successors do; in this case, only \verb|E| satisfies these
-constraints, and so we will derive a state machine for it first.
-\verb|E| is a store to a stack location, and so the stack resolution
-heuristic is triggered.  Assuming that the store was ever executed in
-the captured execution, it will predict that the load at \verb|F| will
-load the stored value.  The load will therefore be eliminated, and so
-the state machine for instruction \verb|E| will be as shown in
-Figure~\ref{fig:state_machines:e}.  It is now possible to combine the
-machines for \verb|E| and \verb|F| to produce one for \verb|D|.  This
-is illustrated in Figure~\ref{fig:state_machines:d} (the left-hand
-branch is the machine for instruction \verb|F| and the right-hand one
-that for instruction \verb|E|).  The state machines for instructions
-\verb|C|, \verb|B| and \verb|A| can now be derived using the
-mechanisms already illustrated, producing the results shown in
-figures~\ref{fig:state_machines:c}, \ref{fig:state_machines:b} and
-\ref{fig:state_machines:a}.
+but whose successors do; only \verb|E| satisfies these constraints,
+and so we will derive a state machine for it first.  \verb|E| is a
+store to a stack location, and so the stack resolution heuristic is
+triggered.  Assuming that the instruction was ever executed in the
+captured execution, it will predict that the load at \verb|F| will
+load the stored value and the load will be eliminated.  The resulting
+machine is shown in Figure~\ref{fig:state_machines:e}.  It is now
+possible to combine the machines for \verb|E| and \verb|F| to produce
+one for \verb|D|.  This is illustrated in
+Figure~\ref{fig:state_machines:d} (the left-hand branch is the machine
+for instruction \verb|F| and the right-hand one that for instruction
+\verb|E|).  The state machines for instructions \verb|C|, \verb|B| and
+\verb|A| can now be derived using the mechanisms already illustrated,
+producing the machines shown in figures \ref{fig:state_machines:c},
+\ref{fig:state_machines:b} and \ref{fig:state_machines:a}.
 
 Note that identical state machines would have been derived if the
 program had not taken the branch immediately before crashing (which
@@ -482,13 +480,7 @@ the captured execution rather than a hypothetical execution generated
 by static analysis.  This is useful: by eliminating uninteresting
 aspects of the observed behavior, SLI is able to generalize from one
 crash to closely related ones, and hence fix them at the same time,
-without eliminating an excessive number of safe schedules.  This
-example also illustrates that the stack resolution heuristic is not
-equivalent to assuming a completely static data flow graph, as it is
-interleaved with control flow discovery and hence respects simple
-control-flow dependencies.  Separating the two processes into
-independent phases would lose this property, and result in far less
-accurate characterizations.\editorial{ref phase order problem?}
+without eliminating an excessive number of safe schedules.
 
 \subsubsection{Indirect branches}
 \label{sect:indirect_branches}
