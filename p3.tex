@@ -507,14 +507,13 @@ those which are sufficiently similar to the captured execution.
 
 \subsubsection{Loops}
 \label{sect:loops}
-Loops also complicate this simple algorithm.  We avoid the problem by
-breaking them, removing a subset of the graph's edges so as to
-eliminate the loop.  We choose edges to remove based on two
-heuristics.  First, we try not to remove any edges which are present
-in the captured execution.  Second, we try not to partition the graph,
-so as many instructions as possible --- and hence as much of the
-program's behavior as possible --- are represented in the final state
-machine.
+Loops also complicate things.  We avoid the problem by breaking them,
+removing a subset of the graph's edges so as to eliminate the loop.
+We choose edges to remove based on two heuristics.  First, we try not
+to remove any edges which are present in the captured execution.
+Second, we try not to partition the graph, so as many instructions as
+possible --- and hence as much of the program's behavior as possible
+--- are represented in the final state machine.
 
 Breaking loops has the useful side-effect of disambiguating the labels
 used to refer to load instructions: in a loop-free control flow graph,
@@ -528,7 +527,7 @@ labels refer to at most one load.
 
 \section{Locating relevant structures}
 
-Once the abstract read operation has been suitably characterised, the
+Once the abstract read operation has been suitably characterized, the
 next step is to discover memory structures to which it can be applied.
 Rather than attempting to represent these (potentially complicated)
 structures explicitly, we instead represent them as specialisations of
@@ -602,9 +601,9 @@ two stages.  First, we determine which stores could possibly conflict
 with loads of memory locations used by the read operation; this allows
 us to make the read operation behave as-if atomically.  Second, we
 determine if there are any regions in the DRS log where executing the
-read operation atomically would still crash; these generally
-correspond to update operations against which the read operation must
-be synchronised.
+read operation atomically would still crash; these correspond to
+update operations against which the read operation must be
+synchronised.
 
 Determining the possibly-conflicting stores is straightforward.  We
 already have, from the previous analysis, a list of the memory
