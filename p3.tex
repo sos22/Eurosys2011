@@ -628,7 +628,7 @@ of the memory structure, and all that is needed is for the relevant
 range of instructions in the storing thread to be synchronised to not
 run in parallel with the read operation.  Otherwise, the update
 operation spans several threads, and SLI is unable to generate a fix.
-In that case, we simply ignore the crashing region and synchronise
+In that case, we simply ignore the crashing region and synchronize
 against any remaining stores.
 
 \section{Producing a fix}
@@ -643,103 +643,113 @@ We now have, for each specialised state machine:
   with the read operation.
 \end{itemize}
 
-The task is to combine these, across all of the state machines, and
-synthesize from them an appropriate fix for the observed bug.  For
-SLI, the fix will consist of a newly-created global (recursive) lock
-plus a number of lock acquire and release operations.  We must use
-these to ensure that the read operation does not occur in parallel
-with any of the store instructions, and does not occur during any of
-the unsafe ranges.
+The task is to combine these, across all of the specializations of
+each state machines, and synthesize from them an appropriate fix for
+the observed bug.  For SLI, the fix will consist of a newly-created
+global (recursive) lock plus a number of lock acquire and release
+operations.  We must use these to ensure that the read operation does
+not occur in parallel with any of the store instructions, and does not
+occur during any of the unsafe ranges.
 
-As stated, this involves comparing ranges of the program's dynamic
-execution to instructions or sets of instructions in its static image.
-This is not entirely well-defined.  We must therefore either convert
-the static instruction references to points in the dynamic execution
-or dynamic ranges of execution to some suitable static representation;
-we choose to convert the dynamic ranges to fragments of the program's
-static control flow graph.
+Note that we group all of the specializations of a given state machine
+together and consider them at once, but do not group together
+specializations derived from different state machines.  The different
+unspecialized state machines represent different conceptual read
+operation, albeit closely related ones, while the specializations of a
+given state machine represent applying that operation to different
+in-memory structures.  It is therefore likely that a race which is
+possible has a close equivalent which is possible with the other
+specializations, but much less likely that it has an equivalent in
+specializations of a different state machine, and so combining the
+results is more appropriate in the former case than the latter.
 
-This is most straightforward if the dynamic range is contained
-entirely within a single function invocation.  However, even this case
-is not entirely trivial.  The most obvious approach is to simply
-acquire the lock on the instruction which corresponds to the start of
-the range and drop it again on the instruction which corresponds to
-its end, but this is unsafe because there might be some other branch
-in between the two instructions which would allow the lock to be
-acquired but never released.  It would be possible to design a simple
-analysis to detect such branches to and arrange to drop the lock if
-one is ever taken, but this would cause any irrelevant branches (as
-discussed in \S\ref{sect:branch_instrs}) to terminate the locked
-region, causing the fixes to be much less effective.
+\subsection{Deciding which static instructions to protect}
+Comparing ranges of the program's dynamic execution to instructions or
+sets of instructions in its static image is not entirely well-defined.
+We must therefore either convert the static instruction references to
+points in the dynamic execution or dynamic ranges of execution to some
+suitable static representation; we choose to convert the dynamic
+ranges to fragments of the program's static control flow graph.  This
+is most straightforward if the dynamic range is contained entirely
+within a single function invocation, but even this case is not
+entirely trivial.  The most obvious approach is to simply acquire the
+lock on the instruction which corresponds to the start of the range
+and drop it again on the instruction which corresponds to its end, but
+this is unsafe because there might be some other branch in between the
+two instructions which would allow the lock to be acquired but never
+released.  It would be possible to design a simple analysis to detect
+such branches to and arrange to drop the lock if one is ever taken,
+but this would cause any irrelevant branches (as discussed in
+\S\ref{sect:branch_instrs}) to terminate the locked region, causing
+the fixes to be much less effective.
 
-We therefore use a more subtle approach.  Starting from an empty
-control flow graph, we add every instruction which is executed in the
-range, with branches to instructions not executed in the range
-replaced with special stub instructions.  We expand the control flow
-graph by exploring the code with is reachable from these stub
-instructions until we reach an indirect branch (including the end of
+We therefore use a more subtle approach.  We start from a control flow
+graph which contains just the instructions contained within the
+dynamic range.  We expand this graph to include every instruction
+which is reachable from one of these instructions until we reach a
+dynamic branch (which is usually the return instruction at the end of
 the function), and then trim the graph back by removing any
 instruction which cannot reach one of the instructions which was in
 the original dynamic range.  The remaining instructions are precisely
 those which are reachable from the instructions in the dynamic range
 and which are able to return to it, and it is these instructions which
-we protect.  Any branch outside of this set is treated as the end of
-the critical section and modified so that it drops the lock.  The
-instruction corresponding to the start of the dynamic range is
-labelled as the CFG's entry point; this will be significant later.
+we protect.  The instruction corresponding to the start of the dynamic
+range is labelled as the CFG's entry point; this will be significant
+later.
 
 In many cases the region to be protected will include multiple
 function invocations.  Functions which are contained entirely within
 the region are straightforward, and can be largely ignored: the
 mechanism already described will ensure that we acquire the lock
 precisely once before calling them, and release it precisely once
-after they return\footnote{Abnormal control flow transfers such as
-  longjmp break this pattern; we check whether the DRS log contains
-  any such transfer out of the called function, and abort if it does,
-  but do not otherwise handle them.}.  Function invocations which are
-in progress at the start or end of the range are more challenging.  We
-handle them by expanding the dynamic range at the start and end by the
-minimum amount such that every function which is called after the
-start of the dynamic range has returned before it ends, and hence
-sidestep the problem.  Equivalently, we nominate the last stack frame
-which is common throughout the range as being responsible for the bug
-and then map any accesses made by functions called from that frame to
-the relevant call instruction.
+after they return, which is generally sufficient\footnote{Abnormal
+  control flow transfers such as longjmp break this pattern; we check
+  whether the DRS log contains any such transfer out of the called
+  function, and abort if it does, but do not otherwise handle them.}.
+Function invocations which are in progress at the start or end of the
+range, but not both, are more challenging.  We handle them by
+expanding the dynamic range at the start and end by the minimum amount
+such that every function which is called after the start of the
+dynamic range has returned before it ends.  This converts the more
+difficult case back into the simpler one, at the expense of using
+larger synchronization regions and hence potentially reducing
+concurrency by more than necessary.  This technique is equivalent to
+nominating the last stack frame which is active throughout the range
+as being responsible for the bug and then treating any functions
+called from that frame as unmodifiable, opaque operations.
 
 The set of loads is also expanded into a fragment of control flow
-graph in much the same way.  Starting from a graph which contains just
-the instructions which are to be protected, we expand forwards to the
-end of the function and then trim any excess instructions.  We then
-nominate some instructions as entry points of the graph such that no
-entry point can reach another one and every instruction is reachable
-from at least one entry point.
+graph in much the same way.  We first map the instructions to be
+protected into a common stack frame, then build a control flow graph
+starting from those instructions, and then trim the CFG to remove any
+instructions which cannot reach an instruction which is to be
+protected.  Finally, we nominate some instructions as entry points of
+the graph such that no entry point can reach another one and every
+instruction is reachable from at least one entry point.  The store
+instructions are also converted into trivial single-instruction
+control flow graphs.
 
-The store instructions are also converted into trivial
-single-instruction control flow graphs.
+\subsection{Building the patches}
+Each CFG is now converted into one or more patches.  The core of each
+patch is a fragment of machine code which duplicates the parts of the
+original program which are covered by the CFG, but modified to release
+the lock at appropriate points, and a small number of trampolines
+which acquire the lock and branch to the entry point instructions in
+the machine code fragment.  The entry point instructions in the
+original program are then replaced with branch instructions which
+target these trampolines.  No other instruction in the original
+program is modified; this ensures that the lock is never released
+without having been first acquired, even if some code path not
+represented in the captured DRS log branches to an instruction in the
+middle of the critical section.
 
-The CFGs are now converted into fragments of machine code which are
-equivalent to the original code except:
-
-\begin{itemize}
-\item They can be safely relocated, updating instruction pointer-relative
-  addresses as appropriate;
-\item Any branches to other instructions in the CFG refer to the
-  equivalent instructions in the new fragment of machine code; and
-\item Any branches to instructions not in the CFG are modified to
-  drop the lock before jumping.
-\end{itemize}
-
-\noindent
-Sometimes code patches can overlap.  A moderate amount of care is
-required to ensure that the resulting composite fix behaves correctly,
-but this is not conceptually difficult provided that the lock is
-recursively acquirable; see below for details.
-
-The original program must now be modified such that instructions which
-were labelled as entry points of a CFG now acquire the lock and branch
-to the relevant instruction in the patch.  Other instructions in the
-program are left unmodified; this ensures that paths which were not
-considered while deriving the fix are unaffected.
+After all of the patches have been constructed, the resulting code can
+be compiled into an ELF shared library which can be loaded into the
+target program using \verb|LD_PRELOAD| (or an equivalent mechanism)
+and which will apply the generated fix.  Patches can sometimes
+overlap, and a moderate amount of care is required to ensure that the
+resulting composite fix behaves correctly, but this is not
+conceptually difficult; see \S\ref{sect:final_example} for an example.
 
 Modifying entry point instructions is sometimes difficult, as the
 instruction to be patched might be too small to encode a branch
@@ -750,11 +760,6 @@ facilities to set breakpoints on the acquiring instructions, and then
 transferring to the new code from the relevant exception handler.  On
 x86 architectures, the breakpoint instruction is a single byte, and so
 always fits in the instruction to be patched.
-
-After all of the patches have been constructed, the resulting code can
-be compiled into an ELF shared library which can be loaded into the
-target program using \verb|LD_PRELOAD| (or an equivalent mechanism)
-and which will apply the generated fix.  
 
 There is a risk that the proposed fix will introduce a deadlock.  We
 avoid this issue with a simple timeout scheme: if a thread takes more
@@ -783,9 +788,8 @@ introducing a new empty critical section and of only partially fixing
 the bug.  SLI then selects the candidate fix with the lowest cost.
 Our prototype sets $U=1000$ and $C_s=10$, strongly preferring fixes
 for which all unsafe states can be eliminated and weakly preferring
-fixes with a smaller number of critical sections.
-
-This simple heuristic has worked well in our experience to date
+fixes with a smaller number of critical sections.  This simple
+heuristic has worked well in our experience to date
 (\S\ref{sect:evaluation}), as there are generally only a small number
 of possible fixes, all of which are correct and none of which would
 obviously lead to pathological performance.
@@ -797,47 +801,32 @@ Our earlier example derived the state machine shown in
 Figure~\ref{fig:state_machines:a} for the program shown in
 Figure~\ref{fig:broken_privatize}.  The only register referenced in
 the machine is \verb|rsp|, and so specialization will then simply
-amount to substituting in constant values for that register.  This
-will not affect the structure of the machine.  The only locations
-accessed when evaluating this machine will be \verb|global1|,
-\verb|fallback|, and \verb|variable1|.  None of these are dynamically
-allocated, and so the machine is valid throughout the log.  The
-possibly-conflicting stores list will then consist of every dynamic
-instance of instructions \verb|V|, \verb|W|, \verb|X|, and \verb|Y|.
+amount to substituting in constant values for that register and will
+have no effect in this case.  The only locations accessed when
+evaluating this machine will be \verb|global1|, \verb|fallback|, and
+\verb|variable1|.  None of these are dynamically allocated, so the
+machine is valid throughout the log.  The possibly-conflicting stores
+will be those which modify one of those locations; in this case,
+\verb|V|, \verb|W|, \verb|X|, and \verb|Y|.
 
-\begin{figure}[thb]
-\includegraphics[scale=0.3]{diagrams/specialise_3.pdf}
-\caption{Results of specialising Figure~\ref{fig:state_machines:a}}
-\label{fig:specialised_example_machine}
-\end{figure}
-
-We now move on to identifying the unsafe regions in the log.  This
-requires us to evaluate the state machine before and after every
-possibly-conflicting store.  In this case, this will always evaluate
-to \verb|no-crash|, which is correct: if the reader were executed
+We must now evaluate the state machine before and after every
+possibly-conflicting store, in order to discover any unsafe dynamic
+regions in the log.  In this case, this will always evaluate to
+\verb|no-crash|, which is correct: if the reader were executed
 atomically, it would never crash, regardless of what state the writer
 was in.  There are therefore no unsafe regions, and the instructions
-to be protected are simply:
+to be protected are simply the load set and the individual
+possibly-conflicting store instructions.
 
-\begin{itemize}
-\item All of the loads issued by thread 1 which are mentioned in the
-  state machine.  In this case, there are only two; \verb|A| and
-  \verb|G|.
-\item The instruction \verb|V|.
-\item The instruction \verb|W|.
-\item The instruction \verb|X|.
-\item The instruction \verb|Y|.
-\end{itemize}
-
-We must now construct appropriate code patches.  Consider the load set
-(the store instructions are trivial).  The control flow graph will in
-this case contain every instruction from \verb|A| to \verb|G| in
-Figure~\ref{fig:broken_privatize} and \verb|A| will be nominated as
-the entry point.  The patch will therefore consist of duplicates of
-those instructions followed by a lock release operation and a branch
-back to instruction \verb|H|, and instruction \verb|A| will be
-modified to acquire the lock and jump to the start of the patch.  Note
-two important properties of this patch:
+These are now converted into patches.  The store instructions are
+trivial, so consider the load set.  The control flow graph will
+contain every instruction from \verb|A| to \verb|G| in
+Figure~\ref{fig:broken_privatize} with \verb|A| nominated as the entry
+point.  The patch's machine code fragment will therefore consist of
+duplicates of those instructions followed by a lock release operation
+and a branch back to instruction \verb|H|, and instruction \verb|A|
+will be modified to acquire the lock and jump to the start of the
+patch.  Note two important properties of this patch:
 
 \begin{itemize}
 \item The instruction which crashed, \verb|J|, is not included in any
@@ -847,7 +836,7 @@ two important properties of this patch:
 \item The fix is correct: it completely eliminates the observed bug.
 \end{itemize}
 
-This is not the only fix which will be suggested, however.  State
+This is not the only fix which will be suggested, however, as state
 machine generation will also have produced machines for other
 instructions in the crashing thread.  Consider, in particular, the
 state machine shown in Figure~\ref{fig:state_machines:f}.  As this
@@ -877,7 +866,10 @@ instructions from \verb|Y| to \verb|V|, crossing the back edge of the
 loop.  A patch will be created which duplicates these instructions
 before dropping the lock and jumping back to instruction \verb|W|, and
 instruction \verb|Y| will be modified to acquire the lock and branch
-to this patch, as shown in Figure~\ref{fig:patch1}.
+to this patch, as shown in Figure~\ref{fig:patch1}.  The only load
+instruction mentioned in the state machines is \verb|G|, and that will
+be instantiated into a trivial single-instruction patch as the store
+instructions were in the previous example.
 
 \begin{figure}
   \begin{subfloat}
@@ -908,10 +900,6 @@ b:   jmp W
   \caption{Partial patch based on the state machine in figure~\ref{fig:specialise_taken}.}
   \label{fig:patch1}
 \end{figure}
-
-The only load instruction mentioned in the state machines is \verb|G|,
-and that will be instantiated into a trivial single-instruction patch
-as the store instructions were in the previous example.
 
 The potentially conflicting stores will be \verb|Y| and \verb|V| in
 this case.  These are more interesting, as they overlap with the
